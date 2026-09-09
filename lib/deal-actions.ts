@@ -1,0 +1,36 @@
+import {z} from 'zod';
+import {agreement,calculateBrokerage,type BrokerageTerms} from './brokerage';
+import {getRecord,fail,rows,updateRecord,now,uuid} from './server';
+import type {Member,DataRecord} from './domain';
+const amount=z.coerce.number().finite().min(0).max(100000000000).transform(n=>Math.round(n*100)/100);
+const termsSchema=z.object({method:z.enum(['fixed','percentage','above_net']),fixedAmount:amount.default(0),percentage:z.coerce.number().finite().min(0).max(100).default(0),ownerNet:amount.default(0),listingShare:z.coerce.number().finite().min(0).max(100),protectionDays:z.coerce.number().int().min(1).max(365),terms:z.string().trim().min(1).max(2500),feePayer:z.enum(['Owner','Buyer','Owner and buyer (allocation in terms)']),dueDate:z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(s=>Number.isFinite(Date.parse(s))&&new Date(s).toISOString().slice(0,10)===s)});
+export function parseAgreement(b:any):BrokerageTerms{const result=termsSchema.safeParse(b);if(!result.success)fail('Complete the brokerage method, amounts, split, protection days, fee payer, due date and terms.');const t=result.data;if(Math.abs(t.percentage*100-Math.round(t.percentage*100))>1e-6)fail('Percentage supports up to two decimal places.');if(Math.abs(t.listingShare*100-Math.round(t.listingShare*100))>1e-6)fail('Split supports up to two decimal places.');if(t.method==='above_net'&&t.ownerNet<=0)fail('An agreed positive owner net is required.');return {...t,fixedAmount:t.method==='fixed'?t.fixedAmount:0,percentage:t.method==='percentage'?t.percentage:0,ownerNet:t.method==='above_net'?t.ownerNet:0};}
+export function requireDealParty(r:DataRecord,m:Member){if(m.id!==r.owner_id&&m.id!==r.partner_id)fail('Only the actual deal participants can agree to these terms.',403);}
+export function checkRevision(r:DataRecord,b:any){if(Number(b.expectedRevision)!==r.revision)fail('The deal changed since you opened this form. Refresh and review the latest version.',409);}
+export function requireNoHold(r:DataRecord){if(r.data.pendingAmendment||r.status==='price_mismatch')fail('Settlement hold: resolve the amendment or final-price mismatch first.',409);}
+export async function mandateMatches(t:BrokerageTerms,propertyId:string){if(t.method!=='above_net')return;const p=await getRecord(propertyId,'property');if(p.status!=='active'||Number(p.data.net)!==t.ownerNet)fail('The proposed owner net does not match the active, owner-approved mandate. Resolve the mandate before acceptance.');}
+const reason=(v:any)=>{if(typeof v!=='string'||!v.trim()||v.length>2500)fail('A reason or confirmation note is required.');return v.trim();};
+export async function handleDealAction(action:string,b:any,m:Member){
+ if(!['amendDeal','amendDecision','closeDeal'].includes(action))return null;
+ const r=await getRecord(String(b.id||''),'deal');requireDealParty(r,m);checkRevision(r,b);const d=r.data;const version=d.agreementVersion??0;
+ if(action==='amendDeal'){
+  if(!['accepted','negotiation','closing','price_mismatch','closed'].includes(r.status))fail('Accept the original co-broke request first.');if(d.pendingAmendment)fail('Resolve the current amendment before proposing another.');if(b.consent!==true)fail('Confirm the proposed terms.');
+  const proposed=parseAgreement(b);await mandateMatches(proposed,d.propertyId);const pendingAmendment={id:uuid(),baseVersion:version,version:version+1,terms:proposed,proposedBy:m.id,approvedBy:[m.id],reason:reason(b.reason),at:now()};
+  return updateRecord(m,r,r.status,{...d,pendingAmendment},'agreement.amendment_proposed',JSON.stringify(pendingAmendment));
+ }
+ if(action==='amendDecision'){
+  const a=d.pendingAmendment;if(!a||a.id!==b.amendmentId||a.baseVersion!==version)fail('This amendment is no longer current.',409);if(a.proposedBy===m.id)fail('The other broker must review this amendment.',403);if(!['accepted','rejected'].includes(b.decision))fail('Choose accept or reject.');const note=reason(b.reason);
+  if(b.decision==='rejected')return updateRecord(m,r,r.status,{...d,pendingAmendment:null,amendmentHistory:[...(d.amendmentHistory||[]),{...a,status:'rejected',reviewedBy:m.id,reviewNote:note,reviewedAt:now()}]},'agreement.amendment_rejected',note);
+  if(b.consent!==true)fail('Confirm acceptance of the displayed amendment.');await mandateMatches(a.terms,d.propertyId);
+  const applied={...a,previousAgreement:agreement(d),previousAcceptedBy:d.acceptedBy||[],status:'accepted',approvedBy:[...new Set([...a.approvedBy,m.id])],reviewNote:note,reviewedAt:now()};
+  return updateRecord(m,r,'accepted',{...d,agreement:a.terms,agreementVersion:a.version,listingShare:a.terms.listingShare,protectionDays:a.terms.protectionDays,terms:a.terms.terms,pool:calculateBrokerage(a.terms,d.asking).pool,pendingAmendment:null,amendmentHistory:[...(d.amendmentHistory||[]),applied],closingHistory:[...(d.closingHistory||[]),...(d.finalPrice||d.priceConfirmations?[{finalPrice:d.finalPrice,priceConfirmations:d.priceConfirmations,settlement:d.settlement,version,archivedAt:now(),reason:'Both-party terms amendment'}]:[])],finalPrice:null,priceConfirmations:{},closeConfirmations:[],closedAt:null,settlement:null},'agreement.amendment_accepted',JSON.stringify(applied));
+ }
+ if(d.pendingAmendment)fail('Resolve the amendment before confirming closing.',409);if(!['accepted','negotiation','closing','price_mismatch'].includes(r.status))fail('This closing is locked. Propose and accept an amendment to reopen it.');if(b.consent!==true)fail('Confirm buyer/owner closing evidence.');
+ const parsed=amount.safeParse(b.finalPrice);if(!parsed.success||parsed.data<=0)fail('Enter a valid positive final selling price.');const price=parsed.data;const applied=(d.amendmentHistory||[]).filter((a:any)=>a.status==='accepted').at(-1);const evidence=await rows<any>('SELECT id FROM files WHERE record_id = ? AND created_at >= ?',r.id,applied?.reviewedAt||r.created_at);if(!evidence.length)fail('Upload new closing evidence for the current agreement version before confirmation.');
+ const confirmations={...(d.priceConfirmations||{}),[m.id]:{price,version,note:reason(b.note),at:now(),evidenceIds:evidence.map(f=>f.id)}};
+ const parties=[...new Set([r.owner_id,r.partner_id])],entries=parties.map(id=>confirmations[id!]).filter(Boolean);const t=agreement(d),calc=calculateBrokerage(t,price);
+ const mismatch=calc.belowNet||entries.some(e=>e.version!==version||e.price!==price);const closed=!mismatch&&entries.length===parties.length;const status=mismatch?'price_mismatch':closed?'closed':'closing';
+ const historyEntry={by:m.id,price,version,at:now(),note:reason(b.note),result:status};
+ const result=await updateRecord(m,r,status,{...d,priceConfirmations:confirmations,closingHistory:[...(d.closingHistory||[]),historyEntry],finalPrice:closed?price:null,closeConfirmations:closed?parties:[],settlement:closed?{...calc,price,version,confirmedAt:now()}:null,closedAt:closed?now():null,holdReason:calc.belowNet?'Final price below owner net':mismatch?'Final price mismatch — settlement hold':null},'deal.'+status,JSON.stringify(historyEntry));
+ return {...result,message:mismatch?'Final price mismatch — settlement hold. Both brokers must confirm the same valid price.':closed?'Deal closed. Brokerage recalculated from the accepted formula.':'Your price is recorded. Waiting for matching confirmation from the other broker.'};
+}

@@ -1,0 +1,11 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "genz-raipur-network",
+  "main": "dist/server/index.js",
+  "compatibility_date": "2026-09-08",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": { "directory": "dist/client", "binding": "ASSETS" },
+  "workers_dev": true,
+  "vars": { "GENZ_LAUNCH_ENABLED": "false", "GENZ_PUBLIC_VERIFICATION": "false" },
+  "observability": { "enabled": true }
+}

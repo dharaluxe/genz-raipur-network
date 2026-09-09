@@ -1,0 +1,130 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {DatabaseSync} from 'node:sqlite';
+import {readFile,readdir,mkdtemp} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join,resolve} from 'node:path';
+import {pathToFileURL} from 'node:url';
+import {build} from 'esbuild';
+
+test('Raipur pilot: permissions, duplicate introductions, evidence, cash and settlement workflow',async()=>{
+ process.env.GENZ_OWNER_EMAIL='admin@example.com';process.env.GENZ_LAUNCH_ENABLED='true';
+ const sqlite=new DatabaseSync(':memory:');
+ for(const f of (await readdir('drizzle')).filter(f=>f.endsWith('.sql')).sort())sqlite.exec(await readFile(join('drizzle',f),'utf8'));
+ class Statement{
+  constructor(sql,args=[]){this.sql=sql;this.args=args;}
+  bind(...args){return new Statement(this.sql,args);}
+  async first(){return sqlite.prepare(this.sql).get(...this.args)??null;}
+  async all(){return {results:sqlite.prepare(this.sql).all(...this.args)};}
+  async run(){const x=sqlite.prepare(this.sql).run(...this.args);return {success:true,meta:{changes:Number(x.changes)}};}
+ }
+ const DB={prepare:sql=>new Statement(sql),batch:async list=>{sqlite.exec('BEGIN');try{const out=[];for(const s of list)out.push(await s.run());sqlite.exec('COMMIT');return out;}catch(e){sqlite.exec('ROLLBACK');throw e;}}};
+ const objects=new Map();
+ const BUCKET={put:async(k,v)=>objects.set(k,v),get:async k=>objects.has(k)?{body:objects.get(k)}:null,delete:async k=>objects.delete(k)};
+ globalThis.__genzTest={env:{DB,BUCKET},headers:new Headers()};
+ const output=await mkdtemp(join(tmpdir(),'genz-api-tests-'));
+ for(const route of ['network','files','verify','export','documents','owner'])await build({entryPoints:[route==='documents'?'app/documents/route.ts':`app/api/${route}/route.ts`],outfile:join(output,route+'.mjs'),bundle:true,format:'esm',platform:'node',target:'node24',alias:{'@/lib/database':resolve('tests/network-runtime.mjs'),'@/lib/storage':resolve('tests/network-runtime.mjs'),'@/lib/auth':resolve('tests/network-runtime.mjs'),'cloudflare:workers':resolve('tests/network-runtime.mjs'),'next/headers':resolve('tests/network-runtime.mjs'),'next/navigation':resolve('tests/network-runtime.mjs')},logLevel:'silent'});
+ const api=await import(pathToFileURL(join(output,'network.mjs'))),files=await import(pathToFileURL(join(output,'files.mjs'))),verify=await import(pathToFileURL(join(output,'verify.mjs')));
+ const exported=await import(pathToFileURL(join(output,'export.mjs'))),documents=await import(pathToFileURL(join(output,'documents.mjs')));
+ const ownerApi=await import(pathToFileURL(join(output,'owner.mjs')));
+ const ownerPost=async(body,expected=200)=>{body.expectedRevision??=(await DB.prepare('SELECT revision FROM records WHERE id=?').bind(body.id).first())?.revision;const res=await ownerApi.POST(new Request('https://genz.test/api/owner',{method:'POST',headers:{'Content-Type':'application/json','x-genz-action':'1',origin:'https://genz.test'},body:JSON.stringify(body)}));const data=await res.json();assert.equal(res.status,expected,JSON.stringify(data));return data;};
+ const user=(id,mail=id+'@example.com')=>{globalThis.__genzTest.headers=new Headers(id?{'oai-authenticated-user-id':id,'oai-authenticated-user-email':mail}:{});};
+ const post=async(body,expected=200,extra={})=>{if(body.id && body.expectedRevision===undefined)body={...body,expectedRevision:sqlite.prepare('SELECT revision FROM records WHERE id=?').get(body.id)?.revision};const res=await api.POST(new Request('https://genz.test/api/network',{method:'POST',headers:{'content-type':'application/json','x-genz-action':'1',origin:'https://genz.test',...extra},body:JSON.stringify(body)}));const data=await res.json();assert.equal(res.status,expected,JSON.stringify(data));return data;};
+ const snap=async()=>{const r=await api.GET();assert.equal(r.status,200);return r.json();};
+ const upload=async(id,expected=200)=>{const f=new FormData();f.set('recordId',id);f.set('file',new File(['%PDF-1.4\nTest receipt'], 'evidence.pdf',{type:'application/pdf'}));const res=await files.POST(new Request('https://genz.test/api/files',{method:'POST',headers:{'x-genz-action':'1',origin:'https://genz.test'},body:f}));const d=await res.json();assert.equal(res.status,expected,JSON.stringify(d));return d;};
+ user(null);assert.equal((await exported.GET()).status,401);await post({action:'setup'},401);
+ user('admin');await post({action:'setup',name:'Pilot Admin',firm:'GENZ',phone:'9000000001',consent:true});
+ user('stranger');await post({action:'setup',name:'Intruder',firm:'X',phone:'9000000002',consent:true},403);await post({action:'invite'},403);
+ user('admin');await post({action:'invite',email:'broker@example.com',name:'Broker'},403,{origin:'https://evil.test'});
+ const invite=await post({action:'invite',email:'broker@example.com',name:'Buyer Broker'});
+ user('stranger');await post({action:'join',token:invite.token},403);
+ user('broker');await post({action:'join',token:invite.token,name:'Buyer Broker',phone:'9000000002',firm:'Raipur Realty',area:'Kamal Vihar',consent:true});
+ await post({action:'join',token:invite.token},403);await post({action:'property'},403);
+ user('admin');await post({action:'memberStatus',id:'broker',status:'active',reason:'Identity checked in person'});
+ const property=await post({action:'property',title:'Test Raipur Plot',area:'Kamal Vihar',type:'Residential plot',size:1500,asking:4500000,net:4200000,ownerEmail:'owner@example.com',ownerName:'Private Owner',ownerPhone:'9000000003',address:'Private plot address',description:'Test only',consent:true});
+ await post({action:'propertyStatus',id:property.id,status:'active',reason:'Owner checked'},400);
+ const ownerFile=await upload(property.id);
+ await post({action:'propertyStatus',id:property.id,status:'active',reason:'Owner has not confirmed'},400);
+ user('owner');await ownerPost({id:property.id,decision:'accepted',note:'My owner net and asking price are correct',consent:true});
+ user('admin');
+ await post({action:'propertyStatus',id:property.id,status:'active',reason:'Owner permission checked'});
+ user('broker');let state=await snap();const visible=state.records.find(r=>r.id===property.id);assert.ok(visible);assert.equal(visible.data.ownerPhone,undefined);assert.equal(visible.data.net,undefined);assert.equal(visible.data.address,undefined);assert.equal(state.files.length,0);assert.ok(state.records.every(r=>r.unique_key===undefined));
+ assert.equal((await files.GET(new Request('https://genz.test/api/files?id='+ownerFile.id))).status,403);
+ await post({action:'propertyStatus',id:property.id,status:'archived',reason:'Unauthorized'},403);
+ const customer=await post({action:'customer',name:'Test Buyer',phone:'+91 9000000004',area:'Kamal Vihar',type:'Residential plot',budget:5000000,minSize:1200,consent:true});
+ await post({action:'customer',name:'Duplicate',phone:'9000000004',area:'Kamal Vihar',type:'Residential plot',budget:5000000,minSize:0,consent:true},409);
+ const terms={action:'deal',propertyId:property.id,customerId:customer.id,method:'fixed',fixedAmount:100000,feePayer:'Owner',dueDate:'2026-10-01',listingShare:60,protectionDays:30,terms:'60/40; payment on closing; agreed 30 days from acknowledged visit',consent:true};
+ const deal=await post(terms);await post(terms,409);
+ await post({action:'dealDecision',id:deal.id,decision:'accepted',reason:'Self approve'},403);
+ user('admin');await post({action:'dealDecision',id:deal.id,decision:'accepted',reason:'Terms accepted'});
+ user('broker');const visit=await post({action:'visit',dealId:deal.id,when:'2026-09-08T10:30:00+05:30',notes:'Customer visit confirmed'});await upload(visit.id);await post({action:'visitVerify',id:visit.id,reason:'Attempt as broker'},403);
+ user('admin');await post({action:'visitVerify',id:visit.id,reason:'Signed customer confirmation checked'});
+ user('broker');const payment=await post({action:'payment',dealId:deal.id,mode:'Cash',purpose:'Brokerage',beneficiaryId:'broker',amount:10000,payer:'Owner',recipient:'Broker',when:'2026-09-08',note:'Receipt provided'});await upload(payment.id);
+ await post({action:'paymentReview',id:payment.id,status:'cash_acknowledged',reason:'Self verify'},403);
+ user('admin');await post({action:'paymentReview',id:payment.id,status:'verified',reason:'Wrong status',payerConfirmed:true,recipientConfirmed:true},400);
+ await post({action:'paymentReview',id:payment.id,status:'cash_acknowledged',reason:'Payer and recipient checked',payerConfirmed:true,recipientConfirmed:true});
+ await post({action:'paymentReview',id:payment.id,status:'rejected',reason:'Overwrite'},400);
+ const p2=await post({action:'payment',dealId:deal.id,mode:'UPI',purpose:'Brokerage',beneficiaryId:'broker',amount:10000,payer:'Owner',recipient:'Broker',reference:'TEST-UTR-001',when:'2026-09-08',note:'Pending statement'});
+ await post({action:'payment',dealId:deal.id,mode:'UPI',purpose:'Brokerage',beneficiaryId:'broker',amount:10000,payer:'Owner',recipient:'Broker',reference:'TEST-UTR-001',when:'2026-09-08',note:'Duplicate'},409);
+ user('broker');await upload(deal.id);await post({action:'closeDeal',id:deal.id,finalPrice:4400000,note:'Buyer and owner acknowledged',consent:true});
+ user('admin');await post({action:'closeDeal',id:deal.id,finalPrice:4500000,note:'Mismatch',consent:true});await post({action:'closeDeal',id:deal.id,finalPrice:4400000,note:'Matching confirmation',consent:true});
+ user('broker');await post({action:'review',dealId:deal.id,targetId:'broker',rating:5,comment:'Self review'},400);const review=await post({action:'review',dealId:deal.id,targetId:'admin',rating:4,comment:'Good documented co-broking'});
+ user('admin');await post({action:'reviewModerate',id:review.id,status:'published',reason:'Verified deal participation'});
+ state=await snap();const admin=state.members.find(m=>m.id==='admin');const publicResult=await verify.GET(new Request('https://genz.test/api/verify?id='+admin.broker_id));const card=await publicResult.json();assert.equal(card.broker.email,undefined);assert.equal(card.broker.phone,undefined);assert.equal(card.rating,4);
+
+ user('broker');
+ await post({action:'closeDeal',id:deal.id,finalPrice:4300000,note:'Silent overwrite',consent:true},400);
+ await post({...terms,action:'amendDeal',id:deal.id,method:'percentage',percentage:2,reason:'Percentage on final price'});
+ state=await snap();let current=state.records.find(r=>r.id===deal.id);const amendment=current.data.pendingAmendment;
+ await post({action:'amendDecision',id:deal.id,amendmentId:amendment.id,decision:'accepted',reason:'Self accept',consent:true},403);
+ await post({action:'closeDeal',id:deal.id,finalPrice:4300000,note:'Pending amendment',consent:true},409);
+ user('admin');await upload(p2.id);
+ await post({action:'paymentReview',id:p2.id,status:'verified',reason:'Cannot settle pending terms',payerConfirmed:true,recipientConfirmed:true},409);
+ await post({action:'amendDecision',id:deal.id,expectedRevision:0,amendmentId:amendment.id,decision:'accepted',reason:'Stale screen',consent:true},409);
+ await post({action:'amendDecision',id:deal.id,amendmentId:amendment.id,decision:'accepted',reason:'Agreed two percent',consent:true});
+ state=await snap();current=state.records.find(r=>r.id===deal.id);
+ assert.equal(current.data.agreementVersion,2);assert.equal(current.data.finalPrice,null);assert.equal(current.data.finance.collected,10000);assert.equal(current.data.amendmentHistory[0].previousAgreement.fixedAmount,100000);
+ assert.ok(current.data.closingHistory.some(h=>h.settlement?.pool===100000));
+ await upload(deal.id);
+ await post({action:'closeDeal',id:deal.id,finalPrice:4300000,note:'New evidence accepted',consent:true});
+ user('broker');await post({action:'closeDeal',id:deal.id,finalPrice:4300000,note:'Matching price',consent:true});
+ state=await snap();current=state.records.find(r=>r.id===deal.id);assert.equal(current.data.settlement.pool,86000);assert.equal(current.data.settlement.listing,51600);assert.equal(current.data.settlement.buyer,34400);
+ await post({...terms,action:'amendDeal',id:deal.id,method:'above_net',ownerNet:4200000,reason:'Owner mandate margin'});
+ state=await snap();current=state.records.find(r=>r.id===deal.id);
+ user('admin');await post({action:'amendDecision',id:deal.id,amendmentId:current.data.pendingAmendment.id,decision:'accepted',reason:'Owner net checked',consent:true});
+ await upload(deal.id);await post({action:'closeDeal',id:deal.id,finalPrice:4100000,note:'Below net reported',consent:true});
+ state=await snap();current=state.records.find(r=>r.id===deal.id);assert.equal(current.status,'price_mismatch');assert.equal(current.data.finalPrice,null);
+ await post({action:'closeDeal',id:deal.id,finalPrice:4300000,note:'Above net confirmed',consent:true});
+ user('broker');await post({action:'closeDeal',id:deal.id,finalPrice:4300000,note:'Same final price',consent:true});
+ state=await snap();current=state.records.find(r=>r.id===deal.id);assert.equal(current.data.settlement.pool,100000);
+ await post({...terms,action:'amendDeal',id:deal.id,fixedAmount:150000,reason:'Proposed change'});
+ state=await snap();current=state.records.find(r=>r.id===deal.id);
+ user('admin');await post({action:'amendDecision',id:deal.id,amendmentId:current.data.pendingAmendment.id,decision:'rejected',reason:'Not agreed'});
+ state=await snap();current=state.records.find(r=>r.id===deal.id);assert.equal(current.status,'closed');assert.equal(current.data.settlement.pool,100000);assert.equal(current.data.pendingAmendment,null);
+ user('broker');assert.equal((await exported.GET()).status,403);user('admin');
+ const exportRes=await exported.GET();assert.equal(exportRes.status,200);const dump=await exportRes.json();assert.ok(dump.records.length);assert.ok(dump.invites.every(i=>i.token_hash===undefined));assert.match(dump.warning,/not a tested/);
+ const print=await documents.GET(new Request('https://genz.test/documents?id='+deal.id));assert.equal(print.status,200);assert.match(await print.text(),/above_net/);
+ const cashPrint=await documents.GET(new Request('https://genz.test/documents?id='+payment.id));assert.equal(cashPrint.status,200);assert.match(await cashPrint.text(),/Cash acknowledgment record/);
+ assert.equal((await documents.GET(new Request('https://genz.test/documents?id='+p2.id))).status,400);
+ const refund=await post({action:'payment',dealId:deal.id,mode:'Cash',purpose:'Refund',originalPaymentId:payment.id,amount:3000,payer:'Broker',recipient:'Owner',when:'2026-09-08',note:'Partial refund'});await upload(refund.id);
+ await post({action:'paymentReview',id:refund.id,status:'cash_acknowledged',reason:'Both acknowledged refund',payerConfirmed:true,recipientConfirmed:true});
+ state=await snap();assert.equal(state.records.find(r=>r.id===deal.id).data.finance.collected,7000);
+ const excess=await post({action:'payment',dealId:deal.id,mode:'Cash',purpose:'Refund',originalPaymentId:payment.id,amount:8000,payer:'Broker',recipient:'Owner',when:'2026-09-08',note:'Too much'});await upload(excess.id);
+ await post({action:'paymentReview',id:excess.id,status:'cash_acknowledged',reason:'Over-refund attempt',payerConfirmed:true,recipientConfirmed:true},400);
+
+
+ await post({action:'propertyRevision',id:property.id,asking:4600000,net:4250000,ownerEmail:'owner@example.com',reason:'Owner requested updated prices'});
+ user('broker');await ownerPost({id:property.id,decision:'accepted',note:'Impersonate owner',consent:true},403);
+ user('owner');const ownerList=await (await ownerApi.GET()).json();assert.equal(ownerList.properties[0].net,4250000);
+ await ownerPost({id:property.id,expectedRevision:0,decision:'accepted',note:'Stale terms',consent:true},409);
+ await ownerPost({id:property.id,decision:'accepted',note:'Revised mandate confirmed',consent:true});
+ user('admin');await upload(property.id);await post({action:'propertyStatus',id:property.id,status:'active',reason:'Fresh owner evidence reviewed'});
+ state=await snap();assert.equal(state.records.find(r=>r.id===property.id).data.net,4250000);
+ assert.equal(state.records.find(r=>r.id===property.id).data.priceHistory[0].net,4200000);
+ assert.equal(state.records.find(r=>r.id===deal.id).data.settlement.pool,100000);
+ await post({action:'memberStatus',id:'broker',status:'suspended',reason:'Test suspension'});user('broker');await post({action:'customer'},403);state=await snap();assert.equal(state.records.length,0);
+ assert.equal(sqlite.prepare("SELECT count(*) n FROM records WHERE kind='deal' AND status='closed'").get().n,1);
+ assert.ok(sqlite.prepare('SELECT count(*) n FROM audits').get().n>15);
+ let throttled;for(let i=0;i<31;i++)throttled=await verify.GET(new Request('https://genz.test/api/verify?id=not-a-broker'));assert.equal(throttled.status,429);
+ sqlite.close();delete globalThis.__genzTest;
+});

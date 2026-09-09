@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1788867622249,
+      "tag": "0000_old_marvel_zombies",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1788881548375,
+      "tag": "0001_typical_morgan_stark",
+      "breakpoints": true
+    }
+  ]
+}
