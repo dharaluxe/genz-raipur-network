@@ -38,10 +38,10 @@ test('PostgreSQL migration: permissions, duplicate introductions, evidence, cash
  user('admin');await post({action:'invite',email:'broker@example.com',name:'Broker'},403,{origin:'https://evil.test'});
  const invite=await post({action:'invite',email:'broker@example.com',name:'Buyer Broker'});
  user('stranger');await post({action:'join',token:invite.token},403);
- user('broker');await post({action:'join',token:invite.token,name:'Buyer Broker',phone:'9000000002',firm:'Raipur Realty',area:'Kamal Vihar',consent:true});
+ user('broker');await post({action:'join',token:invite.token,name:'Buyer Broker',phone:'9000000002',firm:'Raipur Realty',area:'Baner, Pune, Maharashtra',consent:true});
  await post({action:'join',token:invite.token},403);await post({action:'property'},403);
  user('admin');await post({action:'memberStatus',id:'broker',status:'active',reason:'Identity checked in person'});
- const property=await post({action:'property',title:'Test Raipur Plot',area:'Kamal Vihar',type:'Residential plot',size:1500,asking:4500000,net:4200000,ownerEmail:'owner@example.com',ownerName:'Private Owner',ownerPhone:'9000000003',address:'Private plot address',description:'Test only',consent:true});
+ const property=await post({action:'property',title:'Test Raipur Plot',area:'Baner, Pune, Maharashtra',type:'Residential plot',size:1500,asking:4500000,net:4200000,ownerEmail:'owner@example.com',ownerName:'Private Owner',ownerPhone:'9000000003',address:'Private plot address',description:'Test only',consent:true});
  await post({action:'propertyStatus',id:property.id,status:'active',reason:'Owner checked'},400);
  const ownerFile=await upload(property.id);
  await post({action:'propertyStatus',id:property.id,status:'active',reason:'Owner has not confirmed'},400);
@@ -51,8 +51,8 @@ test('PostgreSQL migration: permissions, duplicate introductions, evidence, cash
  user('broker');let state=await snap();const visible=state.records.find(r=>r.id===property.id);assert.ok(visible);assert.equal(visible.data.ownerPhone,undefined);assert.equal(visible.data.net,undefined);assert.equal(visible.data.address,undefined);assert.equal(state.files.length,0);assert.ok(state.records.every(r=>r.unique_key===undefined));
  assert.equal((await files.GET(new Request('https://genz.test/api/files?id='+ownerFile.id))).status,403);
  await post({action:'propertyStatus',id:property.id,status:'archived',reason:'Unauthorized'},403);
- const customer=await post({action:'customer',name:'Test Buyer',phone:'+91 9000000004',area:'Kamal Vihar',type:'Residential plot',budget:5000000,minSize:1200,consent:true});
- await post({action:'customer',name:'Duplicate',phone:'9000000004',area:'Kamal Vihar',type:'Residential plot',budget:5000000,minSize:0,consent:true},409);
+ const customer=await post({action:'customer',name:'Test Buyer',phone:'+91 9000000004',area:'Baner, Pune, Maharashtra',type:'Residential plot',budget:5000000,minSize:1200,consent:true});
+ await post({action:'customer',name:'Duplicate',phone:'9000000004',area:'Baner, Pune, Maharashtra',type:'Residential plot',budget:5000000,minSize:0,consent:true},409);
  const terms={action:'deal',propertyId:property.id,customerId:customer.id,method:'fixed',fixedAmount:100000,feePayer:'Owner',dueDate:'2026-10-01',listingShare:60,protectionDays:30,terms:'60/40; payment on closing; agreed 30 days from acknowledged visit',consent:true};
  const deal=await post(terms);await post(terms,409);
  await post({action:'dealDecision',id:deal.id,decision:'accepted',reason:'Self approve'},403);
