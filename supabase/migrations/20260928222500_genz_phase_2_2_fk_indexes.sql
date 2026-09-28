@@ -1,0 +1,6 @@
+create index if not exists idx_genz_builder_account_invites_inviter on public.genz_builder_account_invites(invited_by_user_id);
+create index if not exists idx_genz_builder_account_invites_redeemed on public.genz_builder_account_invites(redeemed_by_user_id);
+create index if not exists idx_genz_builder_broker_invites_sender on public.genz_builder_broker_invites(sent_by_user_id);
+create index if not exists idx_genz_builder_memberships_inviter on public.genz_builder_memberships(invited_by_user_id);
+create index if not exists idx_genz_owner_confirmations_requester on public.genz_owner_confirmations(requested_by_user_id);
+create index if not exists idx_genz_visits_qr_issuer on public.genz_visits(qr_issued_by_user_id);
