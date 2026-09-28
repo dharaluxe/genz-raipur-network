@@ -26,6 +26,7 @@ const phase2Navigation = [
   { href: '/reviews', label: 'Verified Reviews', icon: Star },
   { href: '/verification', label: 'Verification', icon: ClipboardCheck },
   { href: '/builders', label: 'Builders', icon: Building2 },
+  { href: '/project-invites', label: 'Project Invites', icon: Handshake },
   { href: '/map', label: 'Map Search', icon: MapPinned },
 ];
 
