@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/network-v2-oss-intake
+      - feature/phase-2-3-commission-engine
       - main
   pull_request:
     branches:
@@ -30,4 +31,4 @@ jobs:
         run: npm run build:vercel
 
       - name: Run domain tests
-        run: node --test tests/trust-score.test.mjs tests/network-identity.test.mjs tests/matching-v2.test.mjs
+        run: node --test tests/trust-score.test.mjs tests/network-identity.test.mjs tests/matching-v2.test.mjs tests/commission-v2.test.mjs
