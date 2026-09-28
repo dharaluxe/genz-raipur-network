@@ -1,5 +1,5 @@
-import CommissionNetwork from '@/components/network/commission-network';
+import CommissionMembershipGate from '@/components/network/commission-membership-gate';
 
 export default function CommissionsPage() {
-  return <CommissionNetwork />;
+  return <CommissionMembershipGate />;
 }
