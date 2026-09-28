@@ -1,5 +1,6 @@
 export type TrustScoreInput = {
   profileVerified: boolean;
+  ownerConfirmedListings?: number;
   completedDeals: number;
   successfulCollaborations: number;
   verifiedVisits: number;
@@ -36,13 +37,18 @@ const scaled = (value: number, target: number, points: number) =>
  * GENZ Trust Score is deliberately mostly objective. Public star ratings remain
  * a separate user-feedback signal; verified feedback contributes only 10/100.
  *
+ * Phase 2.2 also rewards owner-confirmed listings, but caps that signal at 5
+ * points so brokers cannot inflate Trust Score by uploading inventory alone.
+ *
  * The formula is deterministic and should only consume verified platform events.
  * Admins may correct the underlying event/dispute record, but should not manually
  * type a broker's Trust Score.
  */
 export function calculateTrustScore(input: TrustScoreInput): TrustScoreResult {
-  const verification = input.profileVerified ? 10 : 0;
-  const deals = scaled(input.completedDeals, 10, 25);
+  const profileVerification = input.profileVerified ? 10 : 0;
+  const ownerVerification = scaled(input.ownerConfirmedListings || 0, 5, 5);
+  const verification = profileVerification + ownerVerification;
+  const deals = scaled(input.completedDeals, 10, 20);
   const collaboration = scaled(input.successfulCollaborations, 10, 20);
   const visits = scaled(input.verifiedVisits, 20, 10);
 
@@ -53,7 +59,6 @@ export function calculateTrustScore(input: TrustScoreInput): TrustScoreResult {
 
   const reviewAverage = clamp(input.verifiedReviewAverage ?? 0, 0, 5);
   const reviewCount = Math.max(0, Math.floor(input.verifiedReviewCount || 0));
-  // Bayesian shrinkage toward a neutral 4/5 until enough verified reviews exist.
   const priorWeight = 5;
   const weightedRating = reviewCount > 0
     ? ((reviewAverage * reviewCount) + (4 * priorWeight)) / (reviewCount + priorWeight)
@@ -71,7 +76,8 @@ export function calculateTrustScore(input: TrustScoreInput): TrustScoreResult {
 
   const verifiedActivity = Math.max(0, input.completedDeals || 0)
     + Math.max(0, input.successfulCollaborations || 0)
-    + Math.max(0, input.verifiedVisits || 0);
+    + Math.max(0, input.verifiedVisits || 0)
+    + Math.min(5, Math.max(0, input.ownerConfirmedListings || 0));
   const confidence = verifiedActivity >= 20 || input.completedDeals >= 5
     ? 'established'
     : verifiedActivity >= 5 || input.completedDeals >= 1
