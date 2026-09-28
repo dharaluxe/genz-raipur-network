@@ -40,7 +40,8 @@ export function daysUntilExpiry(expiresAt: string | null | undefined, nowMs = Da
   if (!expiresAt) return null;
   const target = new Date(expiresAt).getTime();
   if (!Number.isFinite(target)) return null;
-  return Math.ceil((target - nowMs) / 86_400_000);
+  const days = Math.ceil((target - nowMs) / 86_400_000);
+  return Object.is(days, -0) ? 0 : days;
 }
 
 export function rankBrokerRelevance(
