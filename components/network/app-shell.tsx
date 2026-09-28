@@ -26,8 +26,14 @@ const phase2Navigation = [
   { href: '/reviews', label: 'Verified Reviews', icon: Star },
   { href: '/verification', label: 'Verification', icon: ClipboardCheck },
   { href: '/builders', label: 'Builders', icon: Building2 },
-  { href: '/project-invites', label: 'Project Invites', icon: Handshake },
   { href: '/map', label: 'Map Search', icon: MapPinned },
+];
+
+const phase22Navigation = [
+  { href: '/project-invites', label: 'Project Invites', icon: Handshake },
+  { href: '/owner-consent-tools', label: 'Owner Consent', icon: ClipboardCheck },
+  { href: '/visit-qr-tools', label: 'QR Visit', icon: CalendarCheck2 },
+  { href: '/trust', label: 'Trust & Evidence', icon: Star },
 ];
 
 function NavLinks({ items }: { items: typeof coreNavigation }) {
@@ -54,6 +60,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <NavLinks items={coreNavigation} />
           <div className="px-3 pb-1 pt-4 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Phase 2</div>
           <NavLinks items={phase2Navigation} />
+          <div className="px-3 pb-1 pt-4 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Phase 2.2</div>
+          <NavLinks items={phase22Navigation} />
         </nav>
         <div className="mx-4 mt-auto border-t border-slate-800 py-5 text-xs text-slate-500">
           <div className="flex items-center gap-2"><ShieldCheck className="size-4" /> Protected introductions</div>
