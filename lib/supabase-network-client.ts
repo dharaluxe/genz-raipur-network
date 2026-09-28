@@ -7,13 +7,34 @@ let browserClient: SupabaseClient | null = null;
 
 export function getSupabaseNetworkClient() {
   if (!browserClient) {
-    browserClient = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    const client = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
       },
     });
+
+    // Supabase getUser() returns AuthSessionMissingError when the visitor is
+    // simply signed out. GENZ treats that as a normal logged-out state so the
+    // membership gate can render the sign-in/invite UI instead of a red error.
+    const originalGetUser = client.auth.getUser.bind(client.auth);
+    client.auth.getUser = (async (...args: Parameters<typeof originalGetUser>) => {
+      const result = await originalGetUser(...args);
+      const missingSession = Boolean(
+        result.error &&
+          (result.error.name === 'AuthSessionMissingError' ||
+            result.error.message.includes('Auth session missing')),
+      );
+
+      if (missingSession) {
+        return { data: { user: null }, error: null };
+      }
+
+      return result;
+    }) as typeof client.auth.getUser;
+
+    browserClient = client;
   }
   return browserClient;
 }
