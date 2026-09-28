@@ -155,6 +155,10 @@ Editable records hold the current state; audit events preserve how that state wa
 12. builder/project console
 13. CRM/API integrations
 
-## Compatibility rule
+## Rebuild rule
 
-Do not replace the existing GENZ transaction/mandate/audit code wholesale. New V2 modules must be introduced behind migrations and feature flags, with existing pilot records preserved and rollback documented.
+The existing pilot is disposable and is **not** a compatibility target. V2 may replace the current UI, generic records table, route structure and API contracts when a cleaner design is available.
+
+Keep only logic that is actually valuable (for example brokerage calculations, mandate evidence ideas and audit semantics). Do not preserve a bad abstraction merely because the pilot used it.
+
+The live Supabase schema should not be destructively reset until the V2 schema, auth path and critical flows have been verified in code. Once the replacement path is tested, cut over deliberately and archive or drop the legacy `genz` schema instead of carrying permanent dual-write/compatibility code.
