@@ -36,6 +36,10 @@ const phase22Navigation = [
   { href: '/trust', label: 'Trust & Evidence', icon: Star },
 ];
 
+const phase23Navigation = [
+  { href: '/commissions', label: 'Commissions & Referrals', icon: Handshake },
+];
+
 function NavLinks({ items }: { items: typeof coreNavigation }) {
   return <>{items.map(({ href, label, icon: Icon }) => (
     <Link key={href} href={href} className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm text-slate-300 transition hover:bg-slate-900 hover:text-white">
@@ -62,6 +66,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <NavLinks items={phase2Navigation} />
           <div className="px-3 pb-1 pt-4 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Phase 2.2</div>
           <NavLinks items={phase22Navigation} />
+          <div className="px-3 pb-1 pt-4 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Phase 2.3</div>
+          <NavLinks items={phase23Navigation} />
         </nav>
         <div className="mx-4 mt-auto border-t border-slate-800 py-5 text-xs text-slate-500">
           <div className="flex items-center gap-2"><ShieldCheck className="size-4" /> Protected introductions</div>
