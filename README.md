@@ -2,31 +2,37 @@
 
 GENZ Network is a broker-first real-estate collaboration system for protected buyer introductions, master properties, broker-to-broker deals, visit proof and evidence-based reputation across India.
 
-## V2 live beta
+## V2 shared beta
 
 The V2 rebuild replaces the original monolithic pilot with separate Dashboard, Requirements, Properties, Broker Network and Deal Room modules.
 
 The current live beta includes:
 
-- buyer requirement registration with duplicate phone/source protection checks
-- 30-day protection window in the beta workflow
-- masked buyer identity in network cards
-- master property registration and duplicate checks
+- Supabase email/password authentication for broker accounts
+- shared multi-user PostgreSQL persistence instead of browser-local records
+- buyer requirement registration with network-wide phone/source protection
+- server-side HMAC phone fingerprinting with a database-private pepper
+- 30-day buyer source-protection window
+- masked buyer identity on network-visible requirement cards
+- source-broker-only access to full buyer identity under Row Level Security (RLS)
+- shared master property registration and duplicate checks
+- listing-broker-only private owner identity vault under RLS
 - explainable buyer-to-property matching by type, locality, budget and size
-- broker directory with objective Trust Score calculation
-- deal-room creation, collaboration acceptance, visit verification, offers and proof timeline
+- broker directory with activity-based Trust Score inputs
+- deal rooms restricted at database level to the buyer-side and listing-side brokers
+- proof timeline, collaboration acceptance, visit verification, offers and closure states
+- Realtime refresh for shared profiles, requirements, properties, deals and deal events
 - nationwide market coverage rather than a Raipur-only access restriction
-- synthetic sample data only; no sample person is represented as a real verified broker
 
-### Persistence boundary
+### Security boundary
 
-The interactive V2 beta currently persists beta records in the user's browser while the shared authenticated Supabase V2 data model is cut over. This is deliberate: an unfinished shared database must not expose buyer PII or create false network-wide source claims. The UI explicitly labels this boundary.
+All GENZ V2 network tables have RLS enabled. Anonymous clients have no direct table read access. Public network records contain only deliberately shareable fields; full buyer phone and owner identity are stored separately and are visible only to their authorized broker. Deal-room participant identities are bound by database policy to the requirement source broker and property listing broker.
 
-Production multi-user persistence requires authenticated broker accounts, server-side HMAC buyer dedupe, typed V2 tables and permission-scoped reveal rules. Those should be treated as the next backend release, not as already-live functionality.
+The browser uses only the Supabase publishable client key. No service-role key or database-private phone pepper is exposed to the client.
 
 ## Quality gates
 
-GitHub Actions runs `npm ci`, a Next.js production build and the V2 domain test suites for buyer identity/source claims, property matching and Trust Score before production changes are merged.
+GitHub Actions runs `npm ci`, a Next.js production build and the V2 domain test suites for buyer identity/source claims, property matching and Trust Score. Vercel production deployment is connected to `main`.
 
 ## Open-source reuse
 
