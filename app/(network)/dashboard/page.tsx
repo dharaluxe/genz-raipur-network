@@ -1,5 +1,5 @@
-import LiveNetwork from '@/components/network/live-network';
+import SharedNetwork from '@/components/network/shared-network';
 
 export default function DashboardPage() {
-  return <LiveNetwork view="dashboard" />;
+  return <SharedNetwork view="dashboard" />;
 }
