@@ -3,11 +3,9 @@ import {
   Building2,
   CalendarCheck2,
   ClipboardCheck,
-  Factory,
   Handshake,
   LayoutDashboard,
   MapPinned,
-  MessageSquareStar,
   Network,
   Search,
   ShieldCheck,
@@ -25,9 +23,9 @@ const coreNavigation = [
 
 const phase2Navigation = [
   { href: '/visits', label: 'Visit Proof', icon: CalendarCheck2 },
-  { href: '/reviews', label: 'Verified Reviews', icon: MessageSquareStar },
+  { href: '/reviews', label: 'Verified Reviews', icon: Star },
   { href: '/verification', label: 'Verification', icon: ClipboardCheck },
-  { href: '/builders', label: 'Builders', icon: Factory },
+  { href: '/builders', label: 'Builders', icon: Building2 },
   { href: '/map', label: 'Map Search', icon: MapPinned },
 ];
 
