@@ -26,9 +26,34 @@ test('new broker has low-confidence score without fake activity',()=>{
   assert.equal(result.score,25);
 });
 
+test('owner-confirmed listings add capped verification trust without dominating score',()=>{
+  const one=calculateTrustScore({
+    profileVerified:true,
+    ownerConfirmedListings:1,
+    completedDeals:0,
+    successfulCollaborations:0,
+    verifiedVisits:0,
+    collaborationRequests:0,
+    collaborationResponses:0,
+  });
+  const many=calculateTrustScore({
+    profileVerified:true,
+    ownerConfirmedListings:50,
+    completedDeals:0,
+    successfulCollaborations:0,
+    verifiedVisits:0,
+    collaborationRequests:0,
+    collaborationResponses:0,
+  });
+  assert.equal(one.components.verification,11);
+  assert.equal(many.components.verification,15);
+  assert.equal(many.score,30);
+});
+
 test('verified platform activity raises trust score deterministically',()=>{
   const result=calculateTrustScore({
     profileVerified:true,
+    ownerConfirmedListings:5,
     completedDeals:8,
     successfulCollaborations:9,
     verifiedVisits:20,
@@ -45,6 +70,7 @@ test('verified platform activity raises trust score deterministically',()=>{
 test('disputes and duplicate claim violations reduce integrity, never below zero',()=>{
   const clean=calculateTrustScore({
     profileVerified:true,
+    ownerConfirmedListings:5,
     completedDeals:10,
     successfulCollaborations:10,
     verifiedVisits:20,
@@ -55,6 +81,7 @@ test('disputes and duplicate claim violations reduce integrity, never below zero
   });
   const penalized=calculateTrustScore({
     profileVerified:true,
+    ownerConfirmedListings:5,
     completedDeals:10,
     successfulCollaborations:10,
     verifiedVisits:20,
