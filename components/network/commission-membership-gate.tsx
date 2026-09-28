@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { LockKeyhole, LogIn, ShieldCheck } from 'lucide-react';
 import CommissionNetwork from '@/components/network/commission-network';
+import CommissionOperations from '@/components/network/commission-operations';
 import { getSupabaseNetworkClient } from '@/lib/supabase-network-client';
 
 type GateState = 'checking' | 'signed_out' | 'not_member' | 'member' | 'error';
@@ -45,7 +46,7 @@ export default function CommissionMembershipGate() {
     return () => { active = false; };
   }, [supabase]);
 
-  if (state === 'member') return <CommissionNetwork />;
+  if (state === 'member') return <><CommissionNetwork /><CommissionOperations /></>;
 
   return (
     <div className="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
