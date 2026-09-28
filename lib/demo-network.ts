@@ -82,19 +82,19 @@ const plusDays = (days: number) => new Date(now.getTime() + days * 86_400_000).t
 export const DEMO_NETWORK_SEED: DemoNetworkState = {
   brokers: [
     {
-      id: 'BR-1001', name: 'Krishna Tripathi', firm: 'GENZ Buildcon', cities: ['Raipur', 'Bhopal'],
+      id: 'BR-1001', name: 'GENZ Admin', firm: 'GENZ Network', cities: ['Raipur', 'Bhopal'],
       specialties: ['Residential plot', 'Independent house'], verified: true, completedDeals: 7,
       successfulCollaborations: 9, verifiedVisits: 18, collaborationRequests: 24, collaborationResponses: 22,
       rating: 4.8, reviewCount: 12, unresolvedDisputes: 0,
     },
     {
-      id: 'BR-1002', name: 'Aman Verma', firm: 'Central Realty', cities: ['Raipur', 'Bilaspur'],
+      id: 'BR-1002', name: 'Sample Broker A', firm: 'Sample Realty A', cities: ['Raipur', 'Bilaspur'],
       specialties: ['Apartment', 'Commercial'], verified: true, completedDeals: 11,
       successfulCollaborations: 8, verifiedVisits: 26, collaborationRequests: 31, collaborationResponses: 28,
       rating: 4.6, reviewCount: 19, unresolvedDisputes: 0,
     },
     {
-      id: 'BR-1003', name: 'Neha Sharma', firm: 'MP Property Connect', cities: ['Bhopal', 'Indore'],
+      id: 'BR-1003', name: 'Sample Broker B', firm: 'Sample Realty B', cities: ['Bhopal', 'Indore'],
       specialties: ['Residential plot', 'Apartment'], verified: true, completedDeals: 5,
       successfulCollaborations: 7, verifiedVisits: 16, collaborationRequests: 20, collaborationResponses: 17,
       rating: 4.9, reviewCount: 10, unresolvedDisputes: 0,
@@ -102,25 +102,25 @@ export const DEMO_NETWORK_SEED: DemoNetworkState = {
   ],
   requirements: [
     {
-      id: 'REQ-2401', buyerName: 'R. Mehta', buyerPhone: '9876500011', sourceBrokerId: 'BR-1001',
+      id: 'REQ-2401', buyerName: 'Sample Buyer A', buyerPhone: '9876500011', sourceBrokerId: 'BR-1001',
       city: 'Raipur', type: 'Residential plot', maxBudget: 4_500_000, minSize: 1500,
       status: 'active', createdAt: now.toISOString(), expiresAt: plusDays(30),
     },
     {
-      id: 'REQ-2402', buyerName: 'S. Jain', buyerPhone: '9981800022', sourceBrokerId: 'BR-1003',
+      id: 'REQ-2402', buyerName: 'Sample Buyer B', buyerPhone: '9981800022', sourceBrokerId: 'BR-1003',
       city: 'Bhopal', type: 'Apartment', maxBudget: 7_000_000, minSize: 1100,
       status: 'active', createdAt: now.toISOString(), expiresAt: plusDays(30),
     },
   ],
   properties: [
     {
-      id: 'PR-3101', title: 'Kamal Vihar 1500 sqft Plot', city: 'Raipur', type: 'Residential plot',
-      size: 1500, asking: 4_300_000, ownerName: 'Verified Owner A', listingBrokerId: 'BR-1002',
+      id: 'PR-3101', title: 'Sample Raipur 1500 sqft Plot', city: 'Raipur', type: 'Residential plot',
+      size: 1500, asking: 4_300_000, ownerName: 'Sample Owner A', listingBrokerId: 'BR-1002',
       mandateStatus: 'verified', status: 'active',
     },
     {
-      id: 'PR-3102', title: 'Kolar Road 2BHK', city: 'Bhopal', type: 'Apartment',
-      size: 1180, asking: 6_800_000, ownerName: 'Verified Owner B', listingBrokerId: 'BR-1003',
+      id: 'PR-3102', title: 'Sample Bhopal 2BHK', city: 'Bhopal', type: 'Apartment',
+      size: 1180, asking: 6_800_000, ownerName: 'Sample Owner B', listingBrokerId: 'BR-1003',
       mandateStatus: 'verified', status: 'active',
     },
   ],
