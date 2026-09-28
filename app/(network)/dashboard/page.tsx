@@ -1,5 +1,5 @@
-import SharedNetwork from '@/components/network/shared-network';
+import MembershipGate from '@/components/network/membership-gate';
 
 export default function DashboardPage() {
-  return <SharedNetwork view="dashboard" />;
+  return <MembershipGate view="dashboard" />;
 }
