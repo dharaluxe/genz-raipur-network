@@ -13,43 +13,42 @@ import {
   UsersRound,
 } from 'lucide-react';
 
-const coreNavigation = [
+const networkNavigation = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/opportunities', label: 'Opportunity Exchange', icon: Network },
   { href: '/requirements', label: 'Requirements', icon: Search },
   { href: '/properties', label: 'Properties', icon: Building2 },
+  { href: '/sharing', label: 'Sharing Controls', icon: ShieldCheck },
   { href: '/brokers', label: 'Broker Network', icon: UsersRound },
   { href: '/deals', label: 'Deal Rooms', icon: Handshake },
 ];
 
-const phase2Navigation = [
+const verificationNavigation = [
+  { href: '/verification', label: 'Property Verification', icon: ClipboardCheck },
+  { href: '/owner-consent-tools', label: 'Owner Consent', icon: ClipboardCheck },
   { href: '/visits', label: 'Visit Proof', icon: CalendarCheck2 },
+  { href: '/visit-qr-tools', label: 'QR Visit', icon: CalendarCheck2 },
   { href: '/reviews', label: 'Verified Reviews', icon: Star },
-  { href: '/verification', label: 'Verification', icon: ClipboardCheck },
-  { href: '/builders', label: 'Builders', icon: Building2 },
+  { href: '/trust', label: 'Trust & Evidence', icon: Star },
   { href: '/map', label: 'Map Search', icon: MapPinned },
 ];
 
-const phase22Navigation = [
+const businessNavigation = [
+  { href: '/builders', label: 'Builders', icon: Building2 },
   { href: '/project-invites', label: 'Project Invites', icon: Handshake },
-  { href: '/owner-consent-tools', label: 'Owner Consent', icon: ClipboardCheck },
-  { href: '/visit-qr-tools', label: 'QR Visit', icon: CalendarCheck2 },
-  { href: '/trust', label: 'Trust & Evidence', icon: Star },
-];
-
-const phase23Navigation = [
   { href: '/commissions', label: 'Commissions & Referrals', icon: Handshake },
 ];
 
-const phase24Navigation = [
-  { href: '/opportunities', label: 'Opportunity Exchange', icon: Network },
-];
-
-function NavLinks({ items }: { items: typeof coreNavigation }) {
+function NavLinks({ items }: { items: typeof networkNavigation }) {
   return <>{items.map(({ href, label, icon: Icon }) => (
     <Link key={href} href={href} className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm text-slate-300 transition hover:bg-slate-900 hover:text-white">
       <Icon className="size-4" />{label}
     </Link>
   ))}</>;
+}
+
+function NavGroup({ label, items }: { label: string; items: typeof networkNavigation }) {
+  return <><div className="px-3 pb-1 pt-4 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">{label}</div><NavLinks items={items} /></>;
 }
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -65,25 +64,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <p className="mt-2 text-xs leading-5 text-slate-400">Location is a requirement, not a broker restriction. Brokers can collaborate across India.</p>
         </div>
         <nav className="grid gap-1 px-3 py-5">
-          <NavLinks items={coreNavigation} />
-          <div className="px-3 pb-1 pt-4 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Phase 2</div>
-          <NavLinks items={phase2Navigation} />
-          <div className="px-3 pb-1 pt-4 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Phase 2.2</div>
-          <NavLinks items={phase22Navigation} />
-          <div className="px-3 pb-1 pt-4 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Phase 2.3</div>
-          <NavLinks items={phase23Navigation} />
-          <div className="px-3 pb-1 pt-4 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Phase 2.4</div>
-          <NavLinks items={phase24Navigation} />
+          <NavGroup label="Network" items={networkNavigation} />
+          <NavGroup label="Verification & Trust" items={verificationNavigation} />
+          <NavGroup label="Business" items={businessNavigation} />
         </nav>
         <div className="mx-4 mt-auto border-t border-slate-800 py-5 text-xs text-slate-500">
-          <div className="flex items-center gap-2"><ShieldCheck className="size-4" /> Protected introductions</div>
+          <div className="flex items-center gap-2"><ShieldCheck className="size-4" /> Controlled sharing</div>
           <div className="mt-2 flex items-center gap-2"><Star className="size-4" /> Evidence-based trust</div>
         </div>
       </aside>
       <main className="min-w-0">
         <header className="flex min-h-16 items-center justify-between border-b border-slate-200 bg-white px-5 lg:px-8">
-          <div><div className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">GENZ Network V2</div><div className="text-sm text-slate-500">Verified property collaboration without broker conflict</div></div>
-          <div className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600">Private beta</div>
+          <div><div className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">GENZ Network</div><div className="text-sm text-slate-500">Verified property collaboration without broker conflict</div></div>
+          <div className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600">Invite-only network</div>
         </header>
         <div className="mx-auto w-full max-w-[1500px] p-5 lg:p-8">{children}</div>
       </main>
