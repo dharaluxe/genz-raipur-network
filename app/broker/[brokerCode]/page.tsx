@@ -3,9 +3,9 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { BadgeCheck, CalendarDays, RefreshCw, ShieldCheck, Star } from 'lucide-react';
+import { BadgeCheck, CalendarDays, Download, RefreshCw, Share2, ShieldCheck, Star } from 'lucide-react';
 import { getSupabaseNetworkClient } from '@/lib/supabase-network-client';
-import { brokerInitials, isValidBrokerCode, normalizeBrokerCode, publicStatusPresentation, type PublicBrokerStatus } from '@/lib/public-broker-verification';
+import { brokerInitials, isValidBrokerCode, normalizeBrokerCode, publicLookupErrorMessage, publicStatusPresentation, type PublicBrokerStatus } from '@/lib/public-broker-verification';
 
 type PublicBroker = {
   broker_code: string;
@@ -57,7 +57,7 @@ export default function PublicBrokerProfilePage() {
       setCheckedAt(new Date());
     } catch (error) {
       setBroker(null);
-      setMessage(error instanceof Error ? error.message : 'Broker verification failed.');
+      setMessage(publicLookupErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -71,6 +71,16 @@ export default function PublicBrokerProfilePage() {
 
   const status = publicStatusPresentation(broker.account_status);
   const rating = Number(broker.rating || 0);
+  const qrPath = `/api/public-broker-qr?code=${encodeURIComponent(broker.broker_code)}`;
+  const share = async () => {
+    const url = window.location.href;
+    try {
+      if (navigator.share) await navigator.share({ title: `GENZ Broker ${broker.broker_code}`, text: `Verify ${broker.display_name} on GENZ`, url });
+      else await navigator.clipboard.writeText(url);
+    } catch {
+      // The browser may report AbortError when the user closes the share sheet.
+    }
+  };
 
   return (
     <main className="min-h-screen bg-slate-50 px-5 py-10 text-slate-950">
@@ -80,7 +90,7 @@ export default function PublicBrokerProfilePage() {
             <div className="grid size-10 place-items-center rounded-xl bg-blue-600 font-black text-white">G</div>
             <div><div className="font-black">GENZ Network</div><div className="text-xs text-slate-500">Public Broker Verification</div></div>
           </Link>
-          <button onClick={() => void load()} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"><RefreshCw className="size-4" /> Refresh live status</button>
+          <div className="flex flex-wrap gap-2"><button onClick={() => void share()} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"><Share2 className="size-4" /> Share</button><button onClick={() => void load()} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"><RefreshCw className="size-4" /> Refresh live status</button></div>
         </div>
 
         <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
@@ -120,6 +130,8 @@ export default function PublicBrokerProfilePage() {
               <div className="rounded-2xl border border-slate-200 p-5"><h2 className="font-black">Operating areas</h2><div className="mt-3 flex flex-wrap gap-2">{(broker.cities || []).length ? (broker.cities || []).map((city) => <span key={city} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold">{city}</span>) : <span className="text-sm text-slate-500">Not specified</span>}</div></div>
               <div className="rounded-2xl border border-slate-200 p-5"><h2 className="font-black">Specialties</h2><div className="mt-3 flex flex-wrap gap-2">{(broker.specialties || []).length ? (broker.specialties || []).map((item) => <span key={item} className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">{item}</span>) : <span className="text-sm text-slate-500">Not specified</span>}</div></div>
             </div>
+
+            <div className="mt-6 grid gap-5 rounded-2xl border border-slate-200 p-5 sm:grid-cols-[1fr_150px] sm:items-center"><div><h2 className="font-black">Scan to verify this Broker ID</h2><p className="mt-2 text-sm leading-6 text-slate-600">The QR opens this live GENZ verification page. It contains only the public verification URL.</p><a href={qrPath} download={`${broker.broker_code}-verification-qr.png`} className="mt-3 inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-blue-700 hover:bg-slate-50"><Download className="size-4"/>Download QR</a></div><img src={qrPath} alt={`QR to verify ${broker.broker_code}`} className="mx-auto aspect-square w-full max-w-36 rounded-xl border border-slate-100"/></div>
 
             <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-950 p-4 text-xs text-slate-300">
               <span className="flex items-center gap-2"><CalendarDays className="size-4" />GENZ member since {new Date(broker.member_since).toLocaleDateString('en-IN')}</span>
