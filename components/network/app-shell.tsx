@@ -24,6 +24,8 @@ const networkNavigation = [
 ];
 
 const verificationNavigation = [
+  { href: '/public-profile', label: 'Public Broker Profile', icon: ShieldCheck },
+  { href: '/broker-safety', label: 'Broker Safety', icon: ShieldCheck },
   { href: '/verification', label: 'Property Verification', icon: ClipboardCheck },
   { href: '/owner-consent-tools', label: 'Owner Consent', icon: ClipboardCheck },
   { href: '/visits', label: 'Visit Proof', icon: CalendarCheck2 },
