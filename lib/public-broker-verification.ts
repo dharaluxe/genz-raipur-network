@@ -18,6 +18,14 @@ export function brokerInitials(name: string) {
     .join('') || 'G';
 }
 
+export function publicLookupErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error || '');
+  if (message.includes('GENZ_PUBLIC_LOOKUP_RATE_LIMIT')) {
+    return 'Too many verification checks were made from this device/network. Please wait about a minute and try again.';
+  }
+  return message || 'Broker verification failed.';
+}
+
 export function publicStatusPresentation(status: PublicBrokerStatus) {
   switch (status) {
     case 'under_review':
