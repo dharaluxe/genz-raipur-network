@@ -1,0 +1,23 @@
+'use client';
+
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { RefreshCw, ShieldAlert } from 'lucide-react';
+import { getSupabaseNetworkClient } from '@/lib/supabase-network-client';
+
+type Row={broker_code:string;display_name:string;firm:string;account_status:'active'|'under_review'|'suspended'|'removed';public_status_note:string|null;status_effective_at:string;avatar_url:string|null};
+const statuses=['active','under_review','suspended','removed'] as const;
+
+export default function BrokerSafetyPage(){
+ const supabase=useMemo(()=>getSupabaseNetworkClient(),[]);const [rows,setRows]=useState<Row[]>([]);const [loading,setLoading]=useState(true);const [message,setMessage]=useState('');const [busy,setBusy]=useState('');
+ const load=useCallback(async()=>{setLoading(true);setMessage('');try{const {data:auth,error:authError}=await supabase.auth.getUser();if(authError)throw authError;if(!auth.user?.id)throw new Error('Sign in required.');const {data,error}=await supabase.rpc('genz_admin_list_broker_public_statuses');if(error)throw error;setRows((data||[]) as Row[]);}catch(e){setRows([]);setMessage(e instanceof Error?e.message:'Could not load broker safety controls.');}finally{setLoading(false);}},[supabase]);
+ useEffect(()=>{void load();},[load]);
+ const update=async(row:Row,status:Row['account_status'],note:string)=>{setBusy(row.broker_code);setMessage('');try{const {error}=await supabase.rpc('genz_admin_set_broker_public_status',{p_broker_code:row.broker_code,p_status:status,p_public_note:note||null});if(error)throw error;setMessage(`${row.broker_code} status updated.`);await load();}catch(e){setMessage(e instanceof Error?e.message:'Status update failed.');}finally{setBusy('');}};
+ if(loading)return <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500">Loading broker safety controls…</div>;
+ return <div className="space-y-6"><section><div className="text-xs font-bold uppercase tracking-[.18em] text-rose-600">Admin moderation</div><h1 className="mt-1 text-3xl font-black">Broker Safety</h1><p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">Manage the status that appears on public Broker-ID verification pages. “Under review” must not be used as a public finding of fraud; publish concise factual notes only.</p></section>{message&&<div className="rounded-xl border border-slate-200 bg-white p-4 text-sm">{message}</div>}{!rows.length?<div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500"><ShieldAlert className="mx-auto mb-3 size-6"/>Admin access required, or no brokers are available.</div>:<section className="space-y-3">{rows.map(row=><BrokerSafetyRow key={row.broker_code} row={row} busy={busy===row.broker_code} onSave={update}/>)}</section>}<button onClick={()=>void load()} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-black"><RefreshCw className="size-4"/>Refresh</button></div>;
+}
+
+function BrokerSafetyRow({row,busy,onSave}:{row:Row;busy:boolean;onSave:(row:Row,status:Row['account_status'],note:string)=>Promise<void>}){
+ const [status,setStatus]=useState<Row['account_status']>(row.account_status);const [note,setNote]=useState(row.public_status_note||'');
+ useEffect(()=>{setStatus(row.account_status);setNote(row.public_status_note||'');},[row]);
+ return <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="grid gap-4 lg:grid-cols-[1fr_180px_1.2fr_auto] lg:items-end"><div><div className="font-black">{row.display_name}</div><div className="text-sm text-slate-500">{row.firm} · <span className="font-mono">{row.broker_code}</span></div><div className="mt-1 text-xs text-slate-400">Current since {new Date(row.status_effective_at).toLocaleString('en-IN')}</div></div><label className="text-xs font-bold text-slate-600">Public status<select value={status} onChange={e=>setStatus(e.target.value as Row['account_status'])} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm">{statuses.map(item=><option key={item} value={item}>{item.replace('_',' ')}</option>)}</select></label><label className="text-xs font-bold text-slate-600">Public note<input value={note} onChange={e=>setNote(e.target.value.slice(0,500))} placeholder="Concise factual note" className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"/></label><button disabled={busy} onClick={()=>void onSave(row,status,note)} className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-black text-white disabled:opacity-50">{busy?'Saving…':'Save status'}</button></div></article>;
+}
