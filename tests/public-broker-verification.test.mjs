@@ -8,7 +8,7 @@ import {build} from 'esbuild';
 
 const output=join(await mkdtemp(join(tmpdir(),'genz-public-broker-')),'public-broker-verification.mjs');
 await build({entryPoints:['lib/public-broker-verification.ts'],outfile:output,bundle:true,format:'esm',platform:'node',logLevel:'silent'});
-const {normalizeBrokerCode,isValidBrokerCode,brokerInitials,publicStatusPresentation}=await import(pathToFileURL(output));
+const {normalizeBrokerCode,isValidBrokerCode,brokerInitials,publicLookupErrorMessage,publicStatusPresentation}=await import(pathToFileURL(output));
 
 test('broker id normalization is exact and case-insensitive',()=>{
   assert.equal(normalizeBrokerCode(' br-f442afac '),'BR-F442AFAC');
@@ -31,4 +31,10 @@ test('suspended and removed states are visibly distinct from active',()=>{
 test('broker initials support one or two word names',()=>{
   assert.equal(brokerInitials('Krishna Tripathi'),'KT');
   assert.equal(brokerInitials('Krishna'),'K');
+});
+
+test('public lookup rate limit is translated to visitor-safe copy',()=>{
+  const message=publicLookupErrorMessage(new Error('GENZ_PUBLIC_LOOKUP_RATE_LIMIT'));
+  assert.match(message,/too many verification checks/i);
+  assert.doesNotMatch(message,/GENZ_PUBLIC_LOOKUP_RATE_LIMIT/);
 });
