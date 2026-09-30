@@ -10,6 +10,7 @@ const agreementFix='supabase/migrations/20260930064000_genz_phase_3_1_commission
 const ledgerFix='supabase/migrations/20260930065000_genz_phase_3_1_commission_ledger_concurrency_fix.sql';
 const retryFix='supabase/migrations/20260930070000_genz_phase_3_1_idempotency_cleanup_on_error.sql';
 const ledgerKey='supabase/migrations/20260930071000_genz_phase_3_1_ledger_idempotency_unique_key.sql';
+const storageHardening='supabase/migrations/20260930073000_genz_phase_3_1_storage_context_hardening.sql';
 
 test('core GENZ RLS policies use init-plan-safe auth/member lookups',async()=>{
  const sql=await read(rls);
@@ -69,6 +70,21 @@ test('commission ledger arithmetic is serialized per deal and unambiguous',async
  assert.match(sql,/INVOICE_EXCEEDS_ENTITLEMENT/i);
  assert.match(sql,/PAYMENT_EXCEEDS_RECEIVABLE/i);
  assert.match(sql,/REFUND_EXCEEDS_RECORDED_PAYMENT/i);
+});
+
+test('private document uploads are context-authorized and metadata must point to a real object',async()=>{
+ const sql=await read(storageHardening);
+ assert.match(sql,/drop policy if exists "genz property docs upload"/i);
+ assert.match(sql,/split_part\(name,'\/',2\)='deal'/i);
+ assert.match(sql,/genz_deal_has_permission\(split_part\(name,'\/',3\),'evidence'\)/i);
+ assert.match(sql,/split_part\(name,'\/',2\)='closing'/i);
+ assert.match(sql,/genz_can_access_commission_deal\(split_part\(name,'\/',3\)\)/i);
+ assert.match(sql,/split_part\(name,'\/',2\)='dispute'/i);
+ assert.match(sql,/genz_can_read_dispute_evidence\(name\)/i);
+ assert.match(sql,/p\.listing_user_id=\(select auth\.uid\(\)\)/i);
+ assert.match(sql,/STORAGE_OBJECT_NOT_FOUND/g);
+ assert.match(sql,/INVALID_DOCUMENT_MIME_TYPE/i);
+ assert.match(sql,/p_size_bytes<1/i);
 });
 
 test('Next.js responses ship conservative browser security headers',async()=>{
