@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import {
+  Bell,
   Building2,
   CalendarCheck2,
   ClipboardCheck,
@@ -23,6 +24,7 @@ const networkNavigation = [
   { href: '/access-requests', label: 'Access Requests', icon: ShieldCheck },
   { href: '/brokers', label: 'Broker Network', icon: UsersRound },
   { href: '/deals', label: 'Deal Rooms', icon: Handshake },
+  { href: '/notifications', label: 'Notifications & Follow-ups', icon: Bell },
 ];
 
 const verificationNavigation = [
