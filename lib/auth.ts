@@ -1,9 +1,14 @@
 import {createServerClient} from '@supabase/ssr';
 import {cookies,headers} from 'next/headers';
 import {getChatGPTUser} from '@/app/chatgpt-auth';
+
+const FALLBACK_SUPABASE_URL='https://zvftcwinvbnavvjfmugr.supabase.co';
+const FALLBACK_SUPABASE_PUBLISHABLE_KEY='sb_publishable_-TdeOmwQIln5nkM0_ks8HA_Xt_d4pVy';
+
 export async function authClient(){
  const jar=await cookies();
- const url=process.env.SUPABASE_URL,key=process.env.SUPABASE_PUBLISHABLE_KEY;
+ const url=process.env.SUPABASE_URL||process.env.NEXT_PUBLIC_SUPABASE_URL||FALLBACK_SUPABASE_URL;
+ const key=process.env.SUPABASE_PUBLISHABLE_KEY||process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||FALLBACK_SUPABASE_PUBLISHABLE_KEY;
  if(!url||!key)throw new Error('Supabase authentication is not configured');
  return createServerClient(url,key,{cookies:{getAll:()=>jar.getAll(),setAll:items=>{for(const {name,value,options} of items)jar.set(name,value,{...options,sameSite:'lax',secure:process.env.NODE_ENV==='production'});}}});
 }
