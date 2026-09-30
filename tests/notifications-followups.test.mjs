@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 const read=(path)=>readFile(new URL(`../${path}`,import.meta.url),'utf8');
 
 test('notifications are private to the signed-in user and client writes stay RPC-only',async()=>{
-  const sql=await read('supabase/migrations/20260930050000_genz_notifications_followups_foundation.sql');
+  const sql=await read('supabase/migrations/20260930049000_genz_notifications_followups_foundation.sql');
   assert.match(sql,/create table if not exists public\.genz_notifications/i);
   assert.match(sql,/user_id uuid not null references auth\.users\(id\)/i);
   assert.match(sql,/create policy "users read own notifications"[\s\S]*user_id=\(select auth\.uid\(\)\)/i);
@@ -16,7 +16,7 @@ test('notifications are private to the signed-in user and client writes stay RPC
 
 test('multiple buyer offers remain isolated by Deal Room while listing broker receives each room notification',async()=>{
   const dealSql=await read('supabase/migrations/20260930040000_genz_phase_2_8_deal_room_foundation.sql');
-  const notifySql=await read('supabase/migrations/20260930050000_genz_notifications_followups_foundation.sql');
+  const notifySql=await read('supabase/migrations/20260930049000_genz_notifications_followups_foundation.sql');
   assert.match(dealSql,/create policy "deal participants read offers"[\s\S]*genz_deal_has_permission\(deal_id,'read'\)/i);
   assert.match(dealSql,/select id into v_existing from public\.genz_deals where requirement_id=r\.id and property_id=p\.id/i);
   assert.doesNotMatch(dealSql,/where property_id=p\.id\s*;/i);
@@ -27,7 +27,7 @@ test('multiple buyer offers remain isolated by Deal Room while listing broker re
 });
 
 test('follow-up engine covers expiry, visits, offers, commission and stale work',async()=>{
-  const sql=await read('supabase/migrations/20260930050000_genz_notifications_followups_foundation.sql');
+  const sql=await read('supabase/migrations/20260930049000_genz_notifications_followups_foundation.sql');
   for(const kind of ['requirement_expiry','protection_expiry','visit_due','offer_expiry','commission_due','stale_deal','stale_requirement']) assert.match(sql,new RegExp(kind));
   assert.match(sql,/genz_refresh_my_followups/i);
   assert.match(sql,/genz_update_followup/i);
@@ -36,7 +36,7 @@ test('follow-up engine covers expiry, visits, offers, commission and stale work'
 });
 
 test('notification triggers cover the core collaboration events',async()=>{
-  const sql=await read('supabase/migrations/20260930050000_genz_notifications_followups_foundation.sql');
+  const sql=await read('supabase/migrations/20260930049000_genz_notifications_followups_foundation.sql');
   for(const fn of ['genz_notification_deal_trigger','genz_notification_offer_trigger','genz_notification_message_trigger','genz_notification_access_request_trigger','genz_notification_builder_invite_trigger','genz_notification_opportunity_response_trigger','genz_notification_commission_trigger','genz_notification_visit_trigger']) assert.match(sql,new RegExp(fn));
 });
 
