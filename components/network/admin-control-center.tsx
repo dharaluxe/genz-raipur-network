@@ -1,0 +1,77 @@
+'use client';
+
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { CheckCircle2, Clock3, Gavel, RefreshCw, ShieldAlert, UserRoundCog, XCircle } from 'lucide-react';
+import { getSupabaseNetworkClient } from '@/lib/supabase-network-client';
+
+const inputClass='w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100';
+const primaryButton='inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-3 py-2 text-sm font-black text-white disabled:opacity-50';
+const secondaryButton='inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-black text-slate-700 disabled:opacity-50';
+const rejectButton='inline-flex items-center justify-center gap-2 rounded-xl bg-rose-600 px-3 py-2 text-sm font-black text-white disabled:opacity-50';
+const approveButton='inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-black text-white disabled:opacity-50';
+
+type CaseRow={case_id:string;case_type:string;source_id:string;workflow_status:string;priority:string;title:string;assigned_admin_broker_code:string|null;assigned_admin_name:string|null;source_status:string|null;primary_broker_code:string|null;primary_broker_name:string|null;secondary_broker_code:string|null;secondary_broker_name:string|null;deal_id:string|null;property_id:string|null;amount:number|string|null;reason:string;evidence_summary:string;created_at:string;updated_at:string;resolved_at:string|null};
+type HistoryRow={event_type:string;note:string;actor_broker_code:string|null;actor_name:string|null;created_at:string};
+
+const statuses=['all','open','in_review','waiting','resolved'] as const;
+const types=['all','deal_dispute','commission_dispute','broker_status_appeal','property_master_claim','property_verification'] as const;
+const priorities=['low','normal','high','critical'] as const;
+function pretty(v:string){return v.replaceAll('_',' ').replace(/\b\w/g,x=>x.toUpperCase());}
+function when(v:string){return new Date(v).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'});}
+function money(v:number|string|null){return v==null?'':`₹${new Intl.NumberFormat('en-IN',{maximumFractionDigits:0}).format(Number(v))}`;}
+
+export default function AdminControlCenter(){
+ const supabase=useMemo(()=>getSupabaseNetworkClient(),[]);
+ const [rows,setRows]=useState<CaseRow[]>([]);const [loading,setLoading]=useState(true);const [message,setMessage]=useState('');const [status,setStatus]=useState<(typeof statuses)[number]>('all');const [type,setType]=useState<(typeof types)[number]>('all');const [busy,setBusy]=useState('');
+ const [notes,setNotes]=useState<Record<string,string>>({});const [priority,setPriority]=useState<Record<string,string>>({});const [assignee,setAssignee]=useState<Record<string,string>>({});const [history,setHistory]=useState<Record<string,HistoryRow[]>>({});
+
+ const load=useCallback(async()=>{setLoading(true);setMessage('');try{const auth=await supabase.auth.getUser();if(auth.error)throw auth.error;if(!auth.data.user?.id)throw new Error('ADMIN_REQUIRED');const {data,error}=await supabase.rpc('genz_admin_case_snapshot',{p_status:status==='all'?null:status,p_case_type:type==='all'?null:type,p_limit:300});if(error)throw error;const next=(data||[]) as CaseRow[];setRows(next);setPriority(Object.fromEntries(next.map(x=>[x.case_id,x.priority])));setAssignee(Object.fromEntries(next.map(x=>[x.case_id,x.assigned_admin_broker_code||''])));}catch(e){setRows([]);setMessage(e instanceof Error?e.message:'Could not load admin cases.');}finally{setLoading(false);}},[supabase,status,type]);
+ useEffect(()=>{void load();},[load]);
+
+ async function manage(row:CaseRow,action:'start'|'wait'|'reopen'|'note'){
+  setBusy(row.case_id);setMessage('');try{const {error}=await supabase.rpc('genz_admin_manage_case',{p_case_id:row.case_id,p_action:action,p_priority:priority[row.case_id]||row.priority,p_assignee_broker_code:assignee[row.case_id]??null,p_note:notes[row.case_id]?.trim()||null});if(error)throw error;setNotes(v=>({...v,[row.case_id]:''}));setMessage('Admin case updated.');await load();}catch(e){setMessage(e instanceof Error?e.message:'Case update failed.');}finally{setBusy('');}
+ }
+ async function loadHistory(row:CaseRow){setBusy(row.case_id);try{const {data,error}=await supabase.rpc('genz_admin_case_history',{p_case_id:row.case_id});if(error)throw error;setHistory(v=>({...v,[row.case_id]:(data||[]) as HistoryRow[]}));}catch(e){setMessage(e instanceof Error?e.message:'Could not load case history.');}finally{setBusy('');}}
+ async function decide(row:CaseRow,decision:'positive'|'negative'){
+  const note=notes[row.case_id]?.trim()||'';setBusy(row.case_id);setMessage('');
+  try{
+   let result:{error:any};
+   if(row.case_type==='deal_dispute') result=await supabase.rpc('genz_admin_resolve_deal_dispute',{p_dispute_id:row.source_id,p_status:decision==='positive'?'resolved':'rejected',p_resolution:note||'Reviewed by GENZ admin.'});
+   else if(row.case_type==='commission_dispute') result=await supabase.rpc('genz_admin_resolve_commission_dispute',{p_dispute_id:row.source_id,p_status:decision==='positive'?'resolved':'rejected',p_resolution:note||'Reviewed by GENZ admin.'});
+   else if(row.case_type==='broker_status_appeal') result=await supabase.rpc('genz_admin_resolve_broker_status_appeal',{p_appeal_id:row.source_id,p_decision:decision==='positive'?'accepted':'rejected',p_admin_note:note||null});
+   else if(row.case_type==='property_master_claim') result=await supabase.rpc('genz_admin_review_property_master_claim',{p_claim_id:row.source_id,p_decision:decision==='positive'?'approved':'rejected',p_note:note||''});
+   else result=await supabase.rpc('genz_admin_review_property_verification',{p_property_id:row.source_id,p_status:decision==='positive'?'verified':'rejected'});
+   if(result.error)throw result.error;
+   if(note&&row.case_type==='property_verification'){const audit=await supabase.rpc('genz_admin_manage_case',{p_case_id:row.case_id,p_action:'note',p_priority:priority[row.case_id]||row.priority,p_assignee_broker_code:assignee[row.case_id]??null,p_note:note});if(audit.error)throw audit.error;}
+   setNotes(v=>({...v,[row.case_id]:''}));setMessage('Source decision recorded and case synchronized.');await load();
+  }catch(e){setMessage(e instanceof Error?e.message:'Decision failed.');}finally{setBusy('');}
+ }
+
+ if(loading)return <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500">Loading admin control center…</div>;
+ const denied=message.includes('ADMIN_REQUIRED')||message.toLowerCase().includes('admin access');
+ if(denied)return <div className="mx-auto max-w-xl rounded-2xl border border-rose-200 bg-white p-7 shadow-sm"><ShieldAlert className="size-8 text-rose-600"/><h1 className="mt-4 text-2xl font-black">Admin access required</h1><p className="mt-2 text-sm text-slate-600">This workspace contains private dispute, moderation and verification evidence. Ordinary brokers cannot read the admin queue.</p></div>;
+
+ return <div className="space-y-7 pb-10">
+  <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><div className="text-xs font-black uppercase tracking-[.18em] text-rose-600">Private administration</div><h1 className="mt-1 text-3xl font-black">Admin & Dispute Control Center</h1><p className="mt-2 max-w-4xl text-sm leading-6 text-slate-600">One queue for private Deal Room disputes, commission disputes, broker status appeals, property duplicate/merge claims and property verification reviews. Source-specific decision rules remain authoritative.</p></div><button className={secondaryButton} onClick={()=>void load()}><RefreshCw className="size-4"/>Refresh</button></header>
+  {message&&!denied&&<div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700">{message}</div>}
+  <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-2"><label className="text-xs font-black text-slate-600">Workflow status<select className={`${inputClass} mt-1`} value={status} onChange={e=>setStatus(e.target.value as any)}>{statuses.map(x=><option key={x} value={x}>{pretty(x)}</option>)}</select></label><label className="text-xs font-black text-slate-600">Case type<select className={`${inputClass} mt-1`} value={type} onChange={e=>setType(e.target.value as any)}>{types.map(x=><option key={x} value={x}>{pretty(x)}</option>)}</select></label></div>
+
+  <section className="grid gap-4">{rows.map(row=>{
+   const h=history[row.case_id]; const isBusy=busy===row.case_id; const resolved=row.workflow_status==='resolved';
+   return <article key={row.case_id} className={`rounded-2xl border bg-white p-5 shadow-sm ${row.priority==='critical'?'border-rose-300':row.priority==='high'?'border-amber-200':'border-slate-200'}`}>
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-slate-950 px-2.5 py-1 text-[11px] font-black text-white">{pretty(row.case_type)}</span><span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-black text-slate-700">{pretty(row.workflow_status)}</span><span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-black text-amber-800">{pretty(row.priority)}</span></div><h2 className="mt-3 text-lg font-black">{row.title}</h2><div className="mt-1 text-xs text-slate-500">Source {row.source_status?pretty(row.source_status):'—'} · opened {when(row.created_at)}{row.assigned_admin_name?` · assigned ${row.assigned_admin_name} / ${row.assigned_admin_broker_code}`:''}</div></div>{resolved?<CheckCircle2 className="size-6 text-emerald-600"/>:<Clock3 className="size-6 text-amber-600"/>}</div>
+    <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4"><Info label="Primary broker" value={row.primary_broker_name?`${row.primary_broker_name} · ${row.primary_broker_code}`:'—'}/><Info label="Other broker" value={row.secondary_broker_name?`${row.secondary_broker_name} · ${row.secondary_broker_code}`:'—'}/><Info label="Deal / Property" value={row.deal_id||row.property_id||'—'}/><Info label="Amount" value={money(row.amount)||'—'}/></div>
+    {row.evidence_summary&&<div className="mt-3 rounded-xl bg-blue-50 px-4 py-3 text-xs font-semibold text-blue-900">{row.evidence_summary}</div>}
+    {row.reason&&<div className="mt-3 rounded-xl bg-slate-50 p-4 text-sm whitespace-pre-wrap text-slate-700">{row.reason}</div>}
+
+    <div className="mt-4 grid gap-3 lg:grid-cols-[150px_190px_1fr]"><label className="text-xs font-black text-slate-600">Priority<select className={`${inputClass} mt-1`} value={priority[row.case_id]||row.priority} onChange={e=>setPriority(v=>({...v,[row.case_id]:e.target.value}))}>{priorities.map(x=><option key={x} value={x}>{pretty(x)}</option>)}</select></label><label className="text-xs font-black text-slate-600">Assign admin Broker ID<input className={`${inputClass} mt-1`} value={assignee[row.case_id]??''} onChange={e=>setAssignee(v=>({...v,[row.case_id]:e.target.value.toUpperCase()}))} placeholder="BR-XXXXXXXX"/></label><label className="text-xs font-black text-slate-600">Internal / decision note<textarea className={`${inputClass} mt-1 min-h-20`} maxLength={2000} value={notes[row.case_id]||''} onChange={e=>setNotes(v=>({...v,[row.case_id]:e.target.value}))} placeholder="Private admin note or resolution reason"/></label></div>
+    <div className="mt-4 flex flex-wrap gap-2">{!resolved&&<><button className={primaryButton} disabled={isBusy} onClick={()=>void manage(row,'start')}><UserRoundCog className="size-4"/>Start review</button><button className={secondaryButton} disabled={isBusy} onClick={()=>void manage(row,'wait')}>Waiting</button><button className={secondaryButton} disabled={isBusy} onClick={()=>void manage(row,'note')}>Save note/settings</button><button className={approveButton} disabled={isBusy} onClick={()=>void decide(row,'positive')}><CheckCircle2 className="size-4"/>{positiveLabel(row.case_type)}</button><button className={rejectButton} disabled={isBusy} onClick={()=>void decide(row,'negative')}><XCircle className="size-4"/>{negativeLabel(row.case_type)}</button></>}{resolved&&<button className={secondaryButton} disabled={isBusy} onClick={()=>void manage(row,'reopen')}>Reopen internal case</button>}<button className={secondaryButton} disabled={isBusy} onClick={()=>void loadHistory(row)}><Gavel className="size-4"/>Audit trail</button></div>
+    {h&&<div className="mt-4 border-t border-slate-100 pt-4"><div className="text-xs font-black uppercase tracking-[.14em] text-slate-500">Audit trail</div><div className="mt-2 space-y-2">{h.map((item,i)=><div key={`${item.created_at}-${i}`} className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600"><b>{pretty(item.event_type)}</b> · {item.actor_name?`${item.actor_name} / ${item.actor_broker_code}`:'System'} · {when(item.created_at)}{item.note?` · ${item.note}`:''}</div>)}{!h.length&&<div className="text-xs text-slate-400">No audit events yet.</div>}</div></div>}
+   </article>;
+  })}{!rows.length&&<div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500"><Gavel className="mx-auto mb-3 size-6"/>No cases match the current filters.</div>}</section>
+ </div>;
+}
+
+function Info({label,value}:{label:string;value:string}){return <div className="rounded-xl border border-slate-100 bg-slate-50 p-3"><div className="text-[10px] font-black uppercase tracking-[.12em] text-slate-400">{label}</div><div className="mt-1 text-sm font-semibold text-slate-700">{value}</div></div>;}
+function positiveLabel(type:string){if(type==='broker_status_appeal')return 'Accept appeal';if(type==='property_master_claim')return 'Approve merge';if(type==='property_verification')return 'Verify property';if(type==='commission_dispute')return 'Resolve dispute';return 'Resolve dispute';}
+function negativeLabel(type:string){if(type==='broker_status_appeal')return 'Reject appeal';if(type==='property_master_claim')return 'Reject merge';if(type==='property_verification')return 'Reject verification';return 'Reject dispute';}
