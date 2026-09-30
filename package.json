@@ -16,7 +16,8 @@
     "build:vercel": "next build --webpack",
     "build:cloudflare": "bash scripts/build-verified.sh",
     "deploy:cloudflare": "wrangler deploy --config wrangler.external.jsonc",
-    "test:migration": "node --test tests/brokerage.test.mjs tests/network-postgres.test.mjs"
+    "test:migration": "node --test tests/brokerage.test.mjs tests/network-postgres.test.mjs",
+    "release:runtime-gates": "node scripts/runtime-release-gates.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
