@@ -7,10 +7,13 @@ on:
       - feature/phase-2-3-commission-engine
       - feature/phase-2-4-opportunity-exchange
       - feature/public-broker-verification
+      - phase-2.6/privacy-safe-discovery
+      - phase-2.7/master-identity-dedupe
       - main
   pull_request:
     branches:
       - main
+      - phase-2.6/privacy-safe-discovery
 
 jobs:
   verify:
