@@ -181,8 +181,8 @@ export function nextId(prefix: string) {
   return `${prefix}-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
 }
 
-export function money(value: number) {
+export function money(value: number | string | null | undefined) {
   return new Intl.NumberFormat('en-IN', {
     style: 'currency', currency: 'INR', maximumFractionDigits: 0,
-  }).format(value || 0);
+  }).format(Number(value) || 0);
 }
