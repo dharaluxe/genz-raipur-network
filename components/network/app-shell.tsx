@@ -20,6 +20,7 @@ const networkNavigation = [
   { href: '/requirements', label: 'Requirements', icon: Search },
   { href: '/properties', label: 'Properties', icon: Building2 },
   { href: '/sharing', label: 'Sharing Controls', icon: ShieldCheck },
+  { href: '/access-requests', label: 'Access Requests', icon: ShieldCheck },
   { href: '/brokers', label: 'Broker Network', icon: UsersRound },
   { href: '/deals', label: 'Deal Rooms', icon: Handshake },
 ];
