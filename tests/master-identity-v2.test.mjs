@@ -34,15 +34,16 @@ test('buyer workspace exposes min and max budget and safe duplicate choices', as
   assert.match(ui, /Buyer identity and the other broker remain private/);
 });
 
-test('master property candidates never expose raw owner phone or candidate GPS', async () => {
+test('master property candidate response does not expose owner contact or exact coordinates', async () => {
   const sql = await read('supabase/migrations/20260930015500_genz_phase_2_7_master_property_foundation.sql');
   const signatureStart = sql.indexOf('create or replace function public.genz_property_master_candidates');
-  const signatureEnd = sql.indexOf('language plpgsql', signatureStart);
-  const returnSignature = sql.slice(signatureStart, signatureEnd);
-  assert.ok(signatureStart >= 0);
-  assert.doesNotMatch(returnSignature, /owner_phone_e164/i);
-  assert.doesNotMatch(returnSignature, /canonical_latitude/i);
-  assert.doesNotMatch(returnSignature, /canonical_longitude/i);
+  const returnsStart = sql.indexOf('returns table(', signatureStart);
+  const returnsEnd = sql.indexOf(')\nlanguage plpgsql', returnsStart);
+  const returnSignature = sql.slice(returnsStart, returnsEnd);
+  assert.ok(signatureStart >= 0 && returnsStart >= 0 && returnsEnd > returnsStart);
+  assert.doesNotMatch(returnSignature, /owner_phone/i);
+  assert.doesNotMatch(returnSignature, /latitude/i);
+  assert.doesNotMatch(returnSignature, /longitude/i);
   assert.match(returnSignature, /match_score integer/i);
   assert.match(returnSignature, /evidence text/i);
   assert.match(sql, /Fuzzy matches never auto-merge/i);
