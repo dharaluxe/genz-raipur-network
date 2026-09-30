@@ -16,6 +16,7 @@ import {
 const networkNavigation = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/opportunities', label: 'Opportunity Exchange', icon: Network },
+  { href: '/discover', label: 'Discovery & Matching', icon: Search },
   { href: '/requirements', label: 'Requirements', icon: Search },
   { href: '/properties', label: 'Properties', icon: Building2 },
   { href: '/sharing', label: 'Sharing Controls', icon: ShieldCheck },
