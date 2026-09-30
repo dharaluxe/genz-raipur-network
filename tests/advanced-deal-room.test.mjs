@@ -50,6 +50,16 @@ test('deal evidence stays private, permission checked and storage-path scoped', 
   assert.match(sql, /genz deal evidence participant read/i);
 });
 
+test('hardening keeps trigger helpers internal and blocks arbitrary permission probing', async () => {
+  const sql = await read('supabase/migrations/20260930043000_genz_phase_2_8_security_index_hardening.sql');
+  assert.match(sql, /genz_deal_offers_responded_by_idx/i);
+  assert.match(sql, /revoke all on function public\.genz_seed_deal_participants\(\) from public,anon,authenticated/i);
+  assert.match(sql, /revoke all on function public\.genz_sync_closeouts_on_deal_close\(\) from public,anon,authenticated/i);
+  assert.match(sql, /p_user_id<>v_caller/i);
+  assert.match(sql, /can_manage_participants/i);
+  assert.match(sql, /return false/i);
+});
+
 test('advanced deal room UI uses RPC actions rather than direct support-table mutations', async () => {
   const ui = await read('components/network/advanced-deal-room.tsx');
   const route = await read('app/(network)/deals/page.tsx');
