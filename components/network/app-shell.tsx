@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import {
+  Bell,
   Building2,
   CalendarCheck2,
   ClipboardCheck,
+  Gavel,
   Handshake,
   LayoutDashboard,
   MapPinned,
@@ -12,21 +14,25 @@ import {
   Star,
   UsersRound,
 } from 'lucide-react';
+import AdminNavLinks from '@/components/network/admin-nav-links';
 
 const networkNavigation = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/opportunities', label: 'Opportunity Exchange', icon: Network },
+  { href: '/discover', label: 'Discovery & Matching', icon: Search },
   { href: '/requirements', label: 'Requirements', icon: Search },
   { href: '/properties', label: 'Properties', icon: Building2 },
   { href: '/sharing', label: 'Sharing Controls', icon: ShieldCheck },
+  { href: '/access-requests', label: 'Access Requests', icon: ShieldCheck },
   { href: '/brokers', label: 'Broker Network', icon: UsersRound },
   { href: '/deals', label: 'Deal Rooms', icon: Handshake },
+  { href: '/disputes', label: 'Disputes & Support', icon: Gavel },
+  { href: '/notifications', label: 'Notifications & Follow-ups', icon: Bell },
 ];
 
 const verificationNavigation = [
   { href: '/verify', label: 'Verify Broker (Public)', icon: Search },
   { href: '/public-profile', label: 'My Public Profile', icon: ShieldCheck },
-  { href: '/broker-safety', label: 'Broker Safety', icon: ShieldCheck },
   { href: '/verification', label: 'Property Verification', icon: ClipboardCheck },
   { href: '/owner-consent-tools', label: 'Owner Consent', icon: ClipboardCheck },
   { href: '/visits', label: 'Visit Proof', icon: CalendarCheck2 },
@@ -69,6 +75,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <nav className="grid gap-1 px-3 py-5">
           <NavGroup label="Network" items={networkNavigation} />
           <NavGroup label="Verification & Trust" items={verificationNavigation} />
+          <AdminNavLinks />
           <NavGroup label="Business" items={businessNavigation} />
         </nav>
         <div className="mx-4 mt-auto border-t border-slate-800 py-5 text-xs text-slate-500">

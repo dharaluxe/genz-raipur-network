@@ -1,5 +1,5 @@
-import MembershipGate from '@/components/network/membership-gate';
+import MasterPropertyWorkspaceV2 from '@/components/network/master-property-workspace-v2';
 
 export default function PropertiesPage() {
-  return <MembershipGate view="properties" />;
+  return <MasterPropertyWorkspaceV2 />;
 }

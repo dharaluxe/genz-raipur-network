@@ -1,5 +1,11 @@
-import MembershipGate from '@/components/network/membership-gate';
+import AdvancedDealRoom from '@/components/network/advanced-deal-room';
+import DealParticipantAccess from '@/components/network/deal-participant-access';
 
 export default function DealsPage() {
-  return <MembershipGate view="deals" />;
+  return (
+    <div className="space-y-6">
+      <AdvancedDealRoom />
+      <DealParticipantAccess />
+    </div>
+  );
 }
