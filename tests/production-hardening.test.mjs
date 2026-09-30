@@ -11,6 +11,7 @@ const ledgerFix='supabase/migrations/20260930065000_genz_phase_3_1_commission_le
 const retryFix='supabase/migrations/20260930070000_genz_phase_3_1_idempotency_cleanup_on_error.sql';
 const ledgerKey='supabase/migrations/20260930071000_genz_phase_3_1_ledger_idempotency_unique_key.sql';
 const storageHardening='supabase/migrations/20260930073000_genz_phase_3_1_storage_context_hardening.sql';
+const closingFix='supabase/migrations/20260930075000_genz_phase_3_1_closing_ambiguity_fix.sql';
 
 test('core GENZ RLS policies use init-plan-safe auth/member lookups',async()=>{
  const sql=await read(rls);
@@ -70,6 +71,15 @@ test('commission ledger arithmetic is serialized per deal and unambiguous',async
  assert.match(sql,/INVOICE_EXCEEDS_ENTITLEMENT/i);
  assert.match(sql,/PAYMENT_EXCEEDS_RECEIVABLE/i);
  assert.match(sql,/REFUND_EXCEEDS_RECORDED_PAYMENT/i);
+});
+
+test('deal closing proposal uses unambiguous IDs and materializes the exact closing',async()=>{
+ const sql=await read(closingFix);
+ assert.match(sql,/v_agreement_id uuid/i);
+ assert.match(sql,/v_closing_id uuid/i);
+ assert.match(sql,/ca\.closing_id=v_closing_id/i);
+ assert.match(sql,/genz_materialize_closing_entitlements\(v_closing_id\)/i);
+ assert.doesNotMatch(sql,/\bwhere ca\.closing_id=closing_id\b/i);
 });
 
 test('private document uploads are context-authorized and metadata must point to a real object',async()=>{
