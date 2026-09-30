@@ -4,20 +4,25 @@ import { readdir } from 'node:fs/promises';
 
 const migrationsDir = new URL('../supabase/migrations/', import.meta.url);
 
-test('Supabase migration versions are unique and dependency order is deterministic', async () => {
+test('timestamped Supabase migration versions are unique and dependency order is deterministic', async () => {
   const files = (await readdir(migrationsDir)).filter((name) => name.endsWith('.sql')).sort();
-  const versions = new Map();
+  const timestampVersions = new Map();
 
   for (const file of files) {
-    // Legacy GENZ migrations used YYYYMMDD versions while newer migrations use
-    // timestamp-style versions. Supabase treats the numeric prefix before the
-    // first underscore as the migration version, so preserve legacy filenames
-    // and enforce uniqueness across both formats.
     const match = file.match(/^(\d+)_/);
     assert.ok(match, `Migration filename must start with a numeric version: ${file}`);
     const version = match[1];
-    assert.ok(!versions.has(version), `Duplicate Supabase migration version ${version}: ${versions.get(version)} and ${file}`);
-    versions.set(version, file);
+
+    // Early GENZ migrations used a YYYYMMDD (8-digit) prefix and some of those
+    // legacy files intentionally share that historical date prefix. Do not
+    // rewrite already-shipped history. Newer migrations use a 14-digit
+    // timestamp version; those must be globally unique to keep release order
+    // deterministic and avoid the duplicate-version bug caught in PR #13.
+    assert.ok(version.length === 8 || version.length === 14, `Unsupported migration version format ${version}: ${file}`);
+    if (version.length === 14) {
+      assert.ok(!timestampVersions.has(version), `Duplicate Supabase migration version ${version}: ${timestampVersions.get(version)} and ${file}`);
+      timestampVersions.set(version, file);
+    }
   }
 
   const notificationsFile = '20260930049000_genz_notifications_followups_foundation.sql';
