@@ -12,6 +12,7 @@ on:
       - phase-2.8/advanced-deal-room
       - phase-2.9/notifications-followups
       - phase-3.0/admin-dispute-control
+      - phase-3.1/production-hardening
       - main
   pull_request:
     branches:
@@ -20,6 +21,7 @@ on:
       - phase-2.7/master-identity-dedupe
       - phase-2.8/advanced-deal-room
       - phase-2.9/notifications-followups
+      - phase-3.0/admin-dispute-control
 
 jobs:
   verify:
@@ -42,4 +44,4 @@ jobs:
         run: npm run build:vercel
 
       - name: Run domain tests
-        run: node --test tests/trust-score.test.mjs tests/network-identity.test.mjs tests/matching-v2.test.mjs tests/commission-v2.test.mjs tests/commission-ledger.test.mjs tests/opportunity-v2.test.mjs tests/public-broker-verification.test.mjs tests/privacy-discovery.test.mjs tests/access-requests.test.mjs tests/master-identity-v2.test.mjs tests/advanced-deal-room.test.mjs tests/notifications-followups.test.mjs tests/admin-dispute-control.test.mjs
+        run: node --test tests/trust-score.test.mjs tests/network-identity.test.mjs tests/matching-v2.test.mjs tests/commission-v2.test.mjs tests/commission-ledger.test.mjs tests/opportunity-v2.test.mjs tests/public-broker-verification.test.mjs tests/privacy-discovery.test.mjs tests/access-requests.test.mjs tests/master-identity-v2.test.mjs tests/advanced-deal-room.test.mjs tests/notifications-followups.test.mjs tests/admin-dispute-control.test.mjs tests/production-hardening.test.mjs
