@@ -77,3 +77,13 @@ test('Next.js responses ship conservative browser security headers',async()=>{
  assert.match(config,/poweredByHeader:\s*false/i);
  assert.match(config,/private, no-store/i);
 });
+
+test('public broker QR proxy pins trusted origin and bounds upstream fetch',async()=>{
+ const route=await read('app/api/public-broker-qr/route.ts');
+ assert.match(route,/NEXT_PUBLIC_SITE_URL/i);
+ assert.match(route,/https:\/\/genz-raipur-network\.vercel\.app/i);
+ assert.doesNotMatch(route,/request\.nextUrl\.origin\/broker/i);
+ assert.match(route,/AbortSignal\.timeout\(5000\)/i);
+ assert.match(route,/MAX_QR_BYTES/i);
+ assert.match(route,/image\/png/i);
+});
