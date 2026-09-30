@@ -12,9 +12,9 @@ import {
   Search,
   ShieldCheck,
   Star,
-  UserRoundCog,
   UsersRound,
 } from 'lucide-react';
+import AdminNavLinks from '@/components/network/admin-nav-links';
 
 const networkNavigation = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -33,8 +33,6 @@ const networkNavigation = [
 const verificationNavigation = [
   { href: '/verify', label: 'Verify Broker (Public)', icon: Search },
   { href: '/public-profile', label: 'My Public Profile', icon: ShieldCheck },
-  { href: '/broker-safety', label: 'Broker Safety', icon: ShieldCheck },
-  { href: '/admin-control', label: 'Admin Control', icon: UserRoundCog },
   { href: '/verification', label: 'Property Verification', icon: ClipboardCheck },
   { href: '/owner-consent-tools', label: 'Owner Consent', icon: ClipboardCheck },
   { href: '/visits', label: 'Visit Proof', icon: CalendarCheck2 },
@@ -77,6 +75,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <nav className="grid gap-1 px-3 py-5">
           <NavGroup label="Network" items={networkNavigation} />
           <NavGroup label="Verification & Trust" items={verificationNavigation} />
+          <AdminNavLinks />
           <NavGroup label="Business" items={businessNavigation} />
         </nav>
         <div className="mx-4 mt-auto border-t border-slate-800 py-5 text-xs text-slate-500">
