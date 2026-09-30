@@ -8,6 +8,8 @@ const rls='supabase/migrations/20260930062000_genz_phase_3_1_rls_initplan_harden
 const idem='supabase/migrations/20260930063000_genz_phase_3_1_idempotent_financial_actions.sql';
 const agreementFix='supabase/migrations/20260930064000_genz_phase_3_1_commission_agreement_ambiguity_fix.sql';
 const ledgerFix='supabase/migrations/20260930065000_genz_phase_3_1_commission_ledger_concurrency_fix.sql';
+const retryFix='supabase/migrations/20260930070000_genz_phase_3_1_idempotency_cleanup_on_error.sql';
+const ledgerKey='supabase/migrations/20260930071000_genz_phase_3_1_ledger_idempotency_unique_key.sql';
 
 test('core GENZ RLS policies use init-plan-safe auth/member lookups',async()=>{
  const sql=await read(rls);
@@ -40,6 +42,16 @@ test('high-value actions expose retry-safe V2 RPCs with client request keys',asy
  }
 });
 
+test('concurrent retries recover their existing idempotent record',async()=>{
+ const sql=await read(retryFix);
+ assert.match(sql,/exception when unique_violation/i);
+ assert.match(sql,/offered_by_user_id=v_uid and o\.client_request_id=p_client_request_id/i);
+ assert.match(sql,/proposed_by_user_id=v_uid and a\.client_request_id=p_client_request_id/i);
+ assert.match(sql,/source_key=v_key/i);
+ const keySql=await read(ledgerKey);
+ assert.match(keySql,/unique index if not exists genz_commission_ledger_source_key_uq/i);
+});
+
 test('commission agreement bugfix uses unambiguous agreement variable',async()=>{
  const sql=await read(agreementFix);
  assert.match(sql,/v_agreement_id uuid/i);
@@ -57,4 +69,11 @@ test('commission ledger arithmetic is serialized per deal and unambiguous',async
  assert.match(sql,/INVOICE_EXCEEDS_ENTITLEMENT/i);
  assert.match(sql,/PAYMENT_EXCEEDS_RECEIVABLE/i);
  assert.match(sql,/REFUND_EXCEEDS_RECORDED_PAYMENT/i);
+});
+
+test('Next.js responses ship conservative browser security headers',async()=>{
+ const config=await read('next.config.ts');
+ for(const header of ['X-Content-Type-Options','Referrer-Policy','X-Frame-Options','Permissions-Policy','Cross-Origin-Opener-Policy','X-Permitted-Cross-Domain-Policies','Strict-Transport-Security']) assert.match(config,new RegExp(header,'i'));
+ assert.match(config,/poweredByHeader:\s*false/i);
+ assert.match(config,/private, no-store/i);
 });
