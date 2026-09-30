@@ -38,9 +38,9 @@ test('master property candidate response does not expose owner contact or exact 
   const sql = await read('supabase/migrations/20260930015500_genz_phase_2_7_master_property_foundation.sql');
   const signatureStart = sql.indexOf('create or replace function public.genz_property_master_candidates');
   const returnsStart = sql.indexOf('returns table(', signatureStart);
-  const returnsEnd = sql.indexOf(')\nlanguage plpgsql', returnsStart);
-  const returnSignature = sql.slice(returnsStart, returnsEnd);
-  assert.ok(signatureStart >= 0 && returnsStart >= 0 && returnsEnd > returnsStart);
+  const languageStart = sql.indexOf('language plpgsql', returnsStart);
+  const returnSignature = sql.slice(returnsStart, languageStart);
+  assert.ok(signatureStart >= 0 && returnsStart >= 0 && languageStart > returnsStart);
   assert.doesNotMatch(returnSignature, /owner_phone/i);
   assert.doesNotMatch(returnSignature, /latitude/i);
   assert.doesNotMatch(returnSignature, /longitude/i);
