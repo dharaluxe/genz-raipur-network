@@ -60,10 +60,26 @@ test('hardening keeps trigger helpers internal and blocks arbitrary permission p
   assert.match(sql, /return false/i);
 });
 
+test('referral and observer access is least privilege and core brokers are immutable', async () => {
+  const sql = await read('supabase/migrations/20260930044500_genz_phase_2_8_participant_management.sql');
+  const ui = await read('components/network/deal-participant-access.tsx');
+  assert.match(sql, /genz_upsert_deal_participant/i);
+  assert.match(sql, /p_role not in \('referral_broker','observer'\)/i);
+  assert.match(sql, /CORE_PARTICIPANT_IMMUTABLE/i);
+  assert.match(sql, /can_close=false/i);
+  assert.match(sql, /can_manage_participants=false/i);
+  assert.match(sql, /genz_remove_deal_participant/i);
+  assert.match(ui, /Referral broker/i);
+  assert.match(ui, /Financials/i);
+  assert.match(ui, /genz_upsert_deal_participant/i);
+  assert.match(ui, /genz_remove_deal_participant/i);
+});
+
 test('advanced deal room UI uses RPC actions rather than direct support-table mutations', async () => {
   const ui = await read('components/network/advanced-deal-room.tsx');
   const route = await read('app/(network)/deals/page.tsx');
   assert.match(route, /AdvancedDealRoom/);
+  assert.match(route, /DealParticipantAccess/);
   assert.match(ui, /genz_deal_room_snapshot/);
   assert.match(ui, /genz_create_deal_room_v2/);
   assert.match(ui, /genz_accept_deal_room/);
