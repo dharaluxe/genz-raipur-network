@@ -1,5 +1,5 @@
-import MembershipGate from '@/components/network/membership-gate';
+import AdvancedDealRoom from '@/components/network/advanced-deal-room';
 
 export default function DealsPage() {
-  return <MembershipGate view="deals" />;
+  return <AdvancedDealRoom />;
 }
