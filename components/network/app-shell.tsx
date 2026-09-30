@@ -4,6 +4,7 @@ import {
   Building2,
   CalendarCheck2,
   ClipboardCheck,
+  Gavel,
   Handshake,
   LayoutDashboard,
   MapPinned,
@@ -11,6 +12,7 @@ import {
   Search,
   ShieldCheck,
   Star,
+  UserRoundCog,
   UsersRound,
 } from 'lucide-react';
 
@@ -24,6 +26,7 @@ const networkNavigation = [
   { href: '/access-requests', label: 'Access Requests', icon: ShieldCheck },
   { href: '/brokers', label: 'Broker Network', icon: UsersRound },
   { href: '/deals', label: 'Deal Rooms', icon: Handshake },
+  { href: '/disputes', label: 'Disputes & Support', icon: Gavel },
   { href: '/notifications', label: 'Notifications & Follow-ups', icon: Bell },
 ];
 
@@ -31,6 +34,7 @@ const verificationNavigation = [
   { href: '/verify', label: 'Verify Broker (Public)', icon: Search },
   { href: '/public-profile', label: 'My Public Profile', icon: ShieldCheck },
   { href: '/broker-safety', label: 'Broker Safety', icon: ShieldCheck },
+  { href: '/admin-control', label: 'Admin Control', icon: UserRoundCog },
   { href: '/verification', label: 'Property Verification', icon: ClipboardCheck },
   { href: '/owner-consent-tools', label: 'Owner Consent', icon: ClipboardCheck },
   { href: '/visits', label: 'Visit Proof', icon: CalendarCheck2 },
