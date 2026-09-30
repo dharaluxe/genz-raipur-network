@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 
 const route=readFileSync(new URL('../app/api/auth/route.ts',import.meta.url),'utf8');
 const auth=readFileSync(new URL('../lib/auth.ts',import.meta.url),'utf8');
+const loginForm=readFileSync(new URL('../app/login/form.tsx',import.meta.url),'utf8');
 const migration=readFileSync(new URL('../supabase/migrations/20260930094500_genz_login_rate_limit_rpc.sql',import.meta.url),'utf8');
 
 test('broker auth is Supabase-native and does not require the legacy database bridge',()=>{
@@ -17,6 +18,11 @@ test('server auth accepts the same production Supabase configuration as the brow
   assert.match(auth,/NEXT_PUBLIC_SUPABASE_URL/);
   assert.match(auth,/NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
   assert.match(auth,/zvftcwinvbnavvjfmugr\.supabase\.co/);
+});
+
+test('successful broker login redirects to the dashboard, not the public landing page',()=>{
+  assert.match(loginForm,/location\.assign\('\/dashboard'\)/);
+  assert.doesNotMatch(loginForm,/location\.assign\('\/'\s*\+/);
 });
 
 test('login limiter is callable without exposing direct rate-limit table reads',()=>{
