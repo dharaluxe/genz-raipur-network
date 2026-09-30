@@ -1,5 +1,5 @@
-import MasterPropertyWorkspace from '@/components/network/master-property-workspace';
+import MasterPropertyWorkspaceV2 from '@/components/network/master-property-workspace-v2';
 
 export default function PropertiesPage() {
-  return <MasterPropertyWorkspace />;
+  return <MasterPropertyWorkspaceV2 />;
 }
