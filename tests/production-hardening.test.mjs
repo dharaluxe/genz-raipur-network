@@ -15,7 +15,9 @@ test('core GENZ RLS policies use init-plan-safe auth/member lookups',async()=>{
  assert.match(sql,/\(select public\.genz_is_member\(\)\)/i);
  assert.match(sql,/\(select public\.genz_is_admin\(\)\)/i);
  assert.doesNotMatch(sql,/[^a-z_]auth\.uid\(\)\s*=\s*(?:source_user_id|listing_user_id|buyer_user_id|id)/i);
- for(const policy of ['source broker reads private buyer','brokers update own profile','listing broker creates property','deal participants read room','invite visibility']) assert.match(sql,new RegExp(`alter policy \\\"${policy.replaceAll(' ','\\\\s+')}\\\"`,'i'));
+ for(const policy of ['source broker reads private buyer','brokers update own profile','listing broker creates property','deal participants read room','invite visibility']){
+  assert.ok(sql.includes(`alter policy "${policy}"`),`${policy} policy hardening missing`);
+ }
 });
 
 test('high-value actions expose retry-safe V2 RPCs with client request keys',async()=>{
@@ -32,7 +34,8 @@ test('high-value actions expose retry-safe V2 RPCs with client request keys',asy
  for(const fn of ['genz_make_deal_offer_v2','genz_propose_commission_agreement_v2','genz_record_commission_activity_v2']){
   const start=sql.indexOf(`function public.${fn}`);
   assert.ok(start>=0,`${fn} missing`);
-  const block=sql.slice(start,sql.indexOf('create or replace function public.',start+30)>0?sql.indexOf('create or replace function public.',start+30):sql.length);
+  const next=sql.indexOf('create or replace function public.',start+30);
+  const block=sql.slice(start,next>0?next:sql.length);
   assert.match(block,/revoke execute|revoke execute on function/i);
  }
 });
@@ -50,7 +53,7 @@ test('commission ledger arithmetic is serialized per deal and unambiguous',async
  assert.match(sql,/v_agreement_id uuid/i);
  assert.match(sql,/where id=p_deal_id for update/i);
  assert.match(sql,/x\.agreement_id=v_agreement_id/i);
- assert.match(sql,/agreement_id,v_agreement_id|values\(p_deal_id,v_agreement_id/i);
+ assert.match(sql,/values\(p_deal_id,v_agreement_id/i);
  assert.match(sql,/INVOICE_EXCEEDS_ENTITLEMENT/i);
  assert.match(sql,/PAYMENT_EXCEEDS_RECEIVABLE/i);
  assert.match(sql,/REFUND_EXCEEDS_RECORDED_PAYMENT/i);
