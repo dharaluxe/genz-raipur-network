@@ -11,6 +11,9 @@ test('Properties page exposes listing broker edit, location and media controls',
   assert.match(ui, /genz_update_property_listing_v1/);
   assert.match(ui, /genz-listing-media/);
   assert.match(ui, /genz_set_property_cover_v1/);
+  assert.match(ui, /Property document/);
+  assert.match(ui, /documentKind/);
+  assert.match(ui, /application\/pdf/);
   assert.match(ui, /Use current GPS/);
   assert.match(ui, /Detailed property description/);
   assert.match(ui, /Exact property address/);
