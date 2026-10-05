@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
-import { ExternalLink, Image as ImageIcon, MapPin, RefreshCw, Save, ShieldCheck, Star, Trash2, Upload, Video } from 'lucide-react';
+import { ExternalLink, FileText, Image as ImageIcon, MapPin, RefreshCw, Save, ShieldCheck, Star, Trash2, Upload, Video } from 'lucide-react';
 import { getSupabaseNetworkClient } from '@/lib/supabase-network-client';
 import { money, PROPERTY_TYPES } from '@/lib/demo-network';
 
@@ -29,7 +29,8 @@ export default function PropertyListingManager(){
   const [media,setMedia]=useState<MediaRow[]>([]);
   const [activeId,setActiveId]=useState('');
   const [edit,setEdit]=useState<EditState>(blank);
-  const [assetType,setAssetType]=useState<'photo'|'video'>('photo');
+  const [assetType,setAssetType]=useState<'photo'|'video'|'document'>('photo');
+  const [documentKind,setDocumentKind]=useState('brochure');
   const [file,setFile]=useState<File|null>(null);
   const [caption,setCaption]=useState('');
   const [signed,setSigned]=useState<Record<string,string>>({});
@@ -58,7 +59,7 @@ export default function PropertyListingManager(){
 
   const active=useMemo(()=>properties.find(x=>x.id===activeId)||null,[properties,activeId]);
   const privateRow=useMemo(()=>privateRows.find(x=>x.property_id===activeId)||null,[privateRows,activeId]);
-  const activeMedia=useMemo(()=>media.filter(x=>x.property_id===activeId&&x.asset_type!=='document'),[media,activeId]);
+  const activeMedia=useMemo(()=>media.filter(x=>x.property_id===activeId),[media,activeId]);
 
   useEffect(()=>{
     if(!active){setEdit(blank);return;}
@@ -120,21 +121,21 @@ export default function PropertyListingManager(){
     event.preventDefault();if(!activeId||!uid||!file)return;
     setBusy(true);setError('');setMessage('');
     try{
-      const allowed=assetType==='photo'?['image/jpeg','image/png','image/webp']:['video/mp4','video/quicktime','video/webm'];
+      const allowed=assetType==='photo'?['image/jpeg','image/png','image/webp']:assetType==='video'?['video/mp4','video/quicktime','video/webm']:['application/pdf','image/jpeg','image/png','image/webp'];
       if(!allowed.includes(file.type))throw new Error(`Unsupported ${assetType} format.`);
       const limit=assetType==='video'?100*1024*1024:20*1024*1024;
-      if(file.size>limit)throw new Error(assetType==='video'?'Video must be 100 MB or smaller.':'Photo must be 20 MB or smaller.');
+      if(file.size>limit)throw new Error(assetType==='video'?'Video must be 100 MB or smaller.':'File must be 20 MB or smaller.');
       const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
       const path=`${uid}/property/${activeId}/${crypto.randomUUID()}-${safe}`;
       const {error:uploadError}=await supabase.storage.from('genz-listing-media').upload(path,file,{upsert:false,contentType:file.type});
       if(uploadError)throw uploadError;
       const isFirstPhoto=assetType==='photo'&&!activeMedia.some(x=>x.asset_type==='photo');
       const {error:metaError}=await supabase.from('genz_listing_media').insert({
-        property_id:activeId,project_id:null,uploaded_by_user_id:uid,asset_type:assetType,document_kind:null,file_name:file.name,storage_path:path,mime_type:file.type,size_bytes:file.size,
+        property_id:activeId,project_id:null,uploaded_by_user_id:uid,asset_type:assetType,document_kind:assetType==='document'?documentKind:null,file_name:file.name,storage_path:path,mime_type:file.type,size_bytes:file.size,
         caption:caption.trim(),sort_order:activeMedia.length,is_cover:isFirstPhoto,
       });
       if(metaError){await supabase.storage.from('genz-listing-media').remove([path]);throw metaError;}
-      setFile(null);setCaption('');setMessage(`${assetType==='photo'?'Photo':'Video'} uploaded to this listing.`);await load();
+      setFile(null);setCaption('');setMessage(`${assetType==='photo'?'Photo':assetType==='video'?'Video':'Document'} uploaded to this listing.`);await load();
     }catch(e){setError(e instanceof Error?e.message:'Could not upload media.');}finally{setBusy(false);}
   }
 
@@ -194,9 +195,9 @@ export default function PropertyListingManager(){
       </form>
 
       <div className="space-y-4">
-        <form onSubmit={upload} className="rounded-2xl border border-slate-200 bg-white p-5"><div className="flex items-center gap-2"><Upload className="size-5 text-blue-600"/><h3 className="font-bold">Photos & videos</h3></div><p className="mt-1 text-xs text-slate-500">Private media vault. Sharing remains controlled per broker/access grant.</p><div className="mt-4 grid gap-3"><select className={input} value={assetType} onChange={e=>setAssetType(e.target.value as 'photo'|'video')}><option value="photo">Property photo</option><option value="video">Property video</option></select><input className={input} maxLength={300} placeholder="Caption / room / view" value={caption} onChange={e=>setCaption(e.target.value)}/><input className={input} type="file" accept={assetType==='photo'?'image/jpeg,image/png,image/webp':'video/mp4,video/quicktime,video/webm'} onChange={e=>setFile(e.target.files?.[0]||null)} required/></div><button className={`${primary} mt-4 w-full`} disabled={busy||!file}><Upload className="size-4"/>{busy?'Uploading…':'Upload to listing'}</button></form>
+        <form onSubmit={upload} className="rounded-2xl border border-slate-200 bg-white p-5"><div className="flex items-center gap-2"><Upload className="size-5 text-blue-600"/><h3 className="font-bold">Photos & videos</h3></div><p className="mt-1 text-xs text-slate-500">Private media vault. Sharing remains controlled per broker/access grant.</p><div className="mt-4 grid gap-3"><select className={input} value={assetType} onChange={e=>setAssetType(e.target.value as 'photo'|'video'|'document')}><option value="photo">Property photo</option><option value="video">Property video</option><option value="document">Property document</option></select>{assetType==='document'&&<select className={input} value={documentKind} onChange={e=>setDocumentKind(e.target.value)}><option value="brochure">Brochure</option><option value="floor_plan">Floor plan</option><option value="mandate">Mandate</option><option value="title_summary">Title summary</option><option value="other">Other</option></select>}<input className={input} maxLength={300} placeholder="Caption / room / view" value={caption} onChange={e=>setCaption(e.target.value)}/><input className={input} type="file" accept={assetType==='photo'?'image/jpeg,image/png,image/webp':assetType==='video'?'video/mp4,video/quicktime,video/webm':'application/pdf,image/jpeg,image/png,image/webp'} onChange={e=>setFile(e.target.files?.[0]||null)} required/></div><button className={`${primary} mt-4 w-full`} disabled={busy||!file}><Upload className="size-4"/>{busy?'Uploading…':'Upload to listing'}</button></form>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5"><div className="flex items-center justify-between"><h3 className="font-bold">Listing gallery</h3><span className="text-xs text-slate-500">{activeMedia.length} item(s)</span></div>{activeMedia.length===0?<div className="mt-4 rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">No photos or videos yet.</div>:<div className="mt-4 grid gap-3 sm:grid-cols-2">{activeMedia.map(item=><div key={item.id} className={`overflow-hidden rounded-xl border ${item.is_cover?'border-blue-400 ring-2 ring-blue-100':'border-slate-200'}`}>{item.asset_type==='photo'&&signed[item.id]?<img src={signed[item.id]} alt={item.caption||item.file_name} className="h-36 w-full object-cover"/>:<button type="button" onClick={()=>void open(item)} className="flex h-36 w-full items-center justify-center bg-slate-100 text-slate-500">{item.asset_type==='video'?<Video className="size-8"/>:<ImageIcon className="size-8"/>}</button>}<div className="p-3"><div className="flex items-start justify-between gap-2"><div className="min-w-0"><div className="truncate text-sm font-semibold">{item.caption||item.file_name}</div><div className="mt-1 text-[11px] uppercase text-slate-400">{item.asset_type}{item.is_cover?' · cover':''}</div></div>{item.is_cover&&<Star className="size-4 fill-blue-600 text-blue-600"/>}</div><div className="mt-3 flex flex-wrap gap-2"><button type="button" className={secondary} onClick={()=>void open(item)}>Open</button>{item.asset_type==='photo'&&!item.is_cover&&<button type="button" className={secondary} disabled={busy} onClick={()=>void setCover(item.id)}><Star className="size-4"/>Set cover</button>}{item.uploaded_by_user_id===uid&&<button type="button" className={`${secondary} text-rose-700`} disabled={busy} onClick={()=>void remove(item)}><Trash2 className="size-4"/>Remove</button>}</div></div></div>)}</div>}</div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-5"><div className="flex items-center justify-between"><h3 className="font-bold">Listing gallery</h3><span className="text-xs text-slate-500">{activeMedia.length} item(s)</span></div>{activeMedia.length===0?<div className="mt-4 rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">No photos or videos yet.</div>:<div className="mt-4 grid gap-3 sm:grid-cols-2">{activeMedia.map(item=><div key={item.id} className={`overflow-hidden rounded-xl border ${item.is_cover?'border-blue-400 ring-2 ring-blue-100':'border-slate-200'}`}>{item.asset_type==='photo'&&signed[item.id]?<img src={signed[item.id]} alt={item.caption||item.file_name} className="h-36 w-full object-cover"/>:<button type="button" onClick={()=>void open(item)} className="flex h-36 w-full items-center justify-center bg-slate-100 text-slate-500">{item.asset_type==='video'?<Video className="size-8"/>:item.asset_type==='document'?<FileText className="size-8"/>:<ImageIcon className="size-8"/>}</button>}<div className="p-3"><div className="flex items-start justify-between gap-2"><div className="min-w-0"><div className="truncate text-sm font-semibold">{item.caption||item.file_name}</div><div className="mt-1 text-[11px] uppercase text-slate-400">{item.asset_type}{item.document_kind?` · ${item.document_kind}`:''}{item.is_cover?' · cover':''}</div></div>{item.is_cover&&<Star className="size-4 fill-blue-600 text-blue-600"/>}</div><div className="mt-3 flex flex-wrap gap-2"><button type="button" className={secondary} onClick={()=>void open(item)}>Open</button>{item.asset_type==='photo'&&!item.is_cover&&<button type="button" className={secondary} disabled={busy} onClick={()=>void setCover(item.id)}><Star className="size-4"/>Set cover</button>}{item.uploaded_by_user_id===uid&&<button type="button" className={`${secondary} text-rose-700`} disabled={busy} onClick={()=>void remove(item)}><Trash2 className="size-4"/>Remove</button>}</div></div></div>)}</div>}</div>
       </div>
     </div>
   </section>;
