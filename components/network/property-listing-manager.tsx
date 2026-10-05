@@ -15,7 +15,7 @@ type PropertyRow={
 };
 type PrivateRow={property_id:string; owner_name:string; owner_phone_e164:string|null; address:string};
 type MediaRow={
-  id:string; property_id:string|null; uploaded_by_user_id:string; asset_type:'photo'|'video'|'document'; file_name:string;
+  id:string; property_id:string|null; uploaded_by_user_id:string; asset_type:'photo'|'video'|'document'; document_kind:string|null; file_name:string;
   storage_path:string; mime_type:string; size_bytes:number; caption:string; sort_order:number; is_cover:boolean; created_at:string;
 };
 type EditState={title:string;city:string;locality:string;type:string;size:string;asking:string;description:string;ownerName:string;ownerPhone:string;address:string;latitude:string;longitude:string};
